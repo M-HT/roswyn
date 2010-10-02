@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <SDL.h>
-#include <SDL_image.h>
-#include <SDL_ttf.h>
-#include <fmod.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#include <SDL/SDL_ttf.h>
+#include <SDL/SDL_mixer.h>
 #include "constantes.h"
 #include "fichiers.h"
 #include "jeu.h"
@@ -45,7 +45,6 @@
   extern int wlevel;
   extern SDL_Rect positionWarp;
   extern Item item1;
-  extern SDL_Rect positionMario;
   extern int dialogue1;
   extern int dialogue2;
   extern int dialogue3;
@@ -75,10 +74,31 @@
     extern TTF_Font *police;
     extern SDL_Surface *ecran;
 
-    extern FSOUND_STREAM *musiqueJouee;
+    extern Mix_Music *musiqueJouee;
+
+    extern int orig_width, orig_height;
 
 
+void FlipScreen(void)
+{
+    SDL_Flip(ecran);
+}
 
+void ClearScreen(void)
+{
+    SDL_FillRect(ecran, NULL, SDL_MapRGB(ecran->format, 0, 0, 0));
+    SDL_Flip(ecran);
+}
+
+void BlitSprite(SDL_Surface *src, SDL_Surface *dst, SDL_Rect *dstrect)
+{
+    SDL_Rect position2;
+
+    position2.x = POSITION_HORIZONTAL(dstrect->x);
+    position2.y = POSITION_VERTICAL(dstrect->y);
+
+    SDL_BlitSurface(src, NULL, dst, &position2);
+}
 
 
    int AfficheNiveau(SDL_Rect position, SDL_Surface *ecran, int carte[NB_BLOCS_LARGEUR][NB_BLOCS_HAUTEUR], int level )
@@ -87,6 +107,7 @@
     //Variables de decor
     int i = 0, j = 0;
 
+    SDL_Surface **mapImagesX;
 
     //Pour animer les tiles
         if (tempsTiles + 500 < SDL_GetTicks()) {
@@ -95,489 +116,101 @@
                 else if (animTiles == 2) animTiles = 1;
                 }
 
-if (animTiles == 1)
-{
+    mapImagesX = (animTiles == 1)?mapImages:mapImages2;
+
     for (i = 0 ; i < NB_BLOCS_LARGEUR ; i++)
         {
             for (j = 0 ; j < NB_BLOCS_HAUTEUR ; j++)
             {
-                position.x = i * TAILLE_BLOC;
-                position.y = j * TAILLE_BLOC;
+                position.x = (i * TILE_WIDTH) + TILE_START_X;
+                position.y = (j * TILE_HEIGHT) + TILE_START_Y;
 
                 switch(carte[i][j])
                 {
                     case 1:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 2:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 3:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 4:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 5:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
+                    case 19:
+                    case 20:
+                    case 21:
+                    case 22:
+                    case 23:
+                    case 24:
+                    case 25:
+                    case 26:
+                    case 27:
+                    case 28:
+                    case 29:
+                    case 30:
+                    case 31:
+                    case 32:
+                    case 33:
+                    case 34:
+                    case 35:
+                    case 36:
+                    case 37:
+                    case 38:
+                    case 39:
+                    case 40:
+                    case 41:
+                    case 42:
+                    case 43:
+                    case 44:
+                    case 45:
+                    case 47:
+                    case 48:
+                    case 49:
+                    case 50:
+                    case 51:
+                    case 52:
+                    case 53:
+                        SDL_BlitSurface(mapImagesX[carte[i][j]-1], NULL, ecran, &position);
                         break;
                     case 6:
-                        if ( tileSet == 8) {
-                            if ( boss >= 1 ) { SDL_BlitSurface(mapImages[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 7:
-                        if ( tileSet == 8) {
-                            if ( boss >= 2 ) { SDL_BlitSurface(mapImages[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 8:
-                        if ( tileSet == 8) {
-                            if ( boss >= 3 ) { SDL_BlitSurface(mapImages[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 9:
-                        if ( tileSet == 8) {
-                            if ( boss >= 4 ) { SDL_BlitSurface(mapImages[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 10:
                         if ( tileSet == 8) {
-                            if ( boss >= 5 ) { SDL_BlitSurface(mapImages[20], NULL, ecran, &position);
+                            if ( boss >= (carte[i][j] - 5) ) { SDL_BlitSurface(mapImagesX[20], NULL, ecran, &position);
                             carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
+                            else SDL_BlitSurface(mapImagesX[carte[i][j]-1], NULL, ecran, &position); }
+                        else SDL_BlitSurface(mapImagesX[carte[i][j]-1], NULL, ecran, &position);
                         break;
                     case 11:
-                        if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages[24], NULL, ecran, &position);
-                            carte[i][j] = 25; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else if ( tileSet == 8) {
-                            if ( boss >= 6 ) { SDL_BlitSurface(mapImages[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 12:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages[25], NULL, ecran, &position);
-                            carte[i][j] = 26; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else if ( tileSet == 8) {
-                            if ( boss >= 7 ) { SDL_BlitSurface(mapImages[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 13:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages[26], NULL, ecran, &position);
-                            carte[i][j] = 27; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
+                        if ( tileSet == 2 || tileSet == 9 ) {
+                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImagesX[carte[i][j] + 13], NULL, ecran, &position);
+                            carte[i][j] = (carte[i][j] + 14); }
+                            else SDL_BlitSurface(mapImagesX[carte[i][j]-1], NULL, ecran, &position); }
                         else if ( tileSet == 8) {
-                            if ( boss >= 8 ) { SDL_BlitSurface(mapImages[20], NULL, ecran, &position);
+                            if ( boss >= (carte[i][j] - 5) ) { SDL_BlitSurface(mapImagesX[20], NULL, ecran, &position);
                             carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
+                            else SDL_BlitSurface(mapImagesX[carte[i][j]-1], NULL, ecran, &position); }
+                        else SDL_BlitSurface(mapImagesX[carte[i][j]-1], NULL, ecran, &position);
                         break;
                     case 14:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages[27], NULL, ecran, &position);
-                            carte[i][j] = 28; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 15:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages[28], NULL, ecran, &position);
-                            carte[i][j] = 29; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 16:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages[29], NULL, ecran, &position);
-                            carte[i][j] = 30; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 17:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages[30], NULL, ecran, &position);
-                            carte[i][j] = 31; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
                     case 18:
                          if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages[31], NULL, ecran, &position);
-                            carte[i][j] = 32; }
-                            else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 19:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 20:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 21:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 22:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 23:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 24:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 25:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 26:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 27:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 28:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 29:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 30:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 31:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 32:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 33:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 34:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 35:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 36:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 37:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 38:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 39:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 40:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 41:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 42:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 43:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 44:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 45:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
+                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImagesX[carte[i][j] + 13], NULL, ecran, &position);
+                            carte[i][j] = (carte[i][j] + 14); }
+                            else SDL_BlitSurface(mapImagesX[carte[i][j]-1], NULL, ecran, &position); }
+                        else SDL_BlitSurface(mapImagesX[carte[i][j]-1], NULL, ecran, &position);
                         break;
                     case 46:
-                        if ( ValeurCoffre( level ) == 1 ) SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        else SDL_BlitSurface(mapImages[carte[i][j]], NULL, ecran, &position);
-                        break;
-                    case 47:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 48:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 49:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 50:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 51:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 52:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 53:
-                        SDL_BlitSurface(mapImages[carte[i][j]-1], NULL, ecran, &position);
+                        if ( ValeurCoffre( level ) == 1 ) SDL_BlitSurface(mapImagesX[carte[i][j]-1], NULL, ecran, &position);
+                        else SDL_BlitSurface(mapImagesX[carte[i][j]], NULL, ecran, &position);
                         break;
 
                 }
             }
         }
-
-}
-
-else if ( animTiles == 2 )
-{
-    for (i = 0 ; i < NB_BLOCS_LARGEUR ; i++)
-        {
-            for (j = 0 ; j < NB_BLOCS_HAUTEUR ; j++)
-            {
-                position.x = i * TAILLE_BLOC;
-                position.y = j * TAILLE_BLOC;
-
-                switch(carte[i][j])
-                {
-                    case 1:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 2:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 3:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 4:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 5:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 6:
-                        if ( tileSet == 8) {
-                            if ( boss >= 1 ) { SDL_BlitSurface(mapImages2[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 7:
-                        if ( tileSet == 8) {
-                            if ( boss >= 2 ) { SDL_BlitSurface(mapImages2[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 8:
-                        if ( tileSet == 8) {
-                            if ( boss >= 3 ) { SDL_BlitSurface(mapImages2[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 9:
-                        if ( tileSet == 8) {
-                            if ( boss >= 4 ) { SDL_BlitSurface(mapImages2[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 10:
-                        if ( tileSet == 8) {
-                            if ( boss >= 5 ) { SDL_BlitSurface(mapImages2[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 11:
-                        if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages2[24], NULL, ecran, &position);
-                            carte[i][j] = 25; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else if ( tileSet == 8) {
-                            if ( boss >= 6 ) { SDL_BlitSurface(mapImages2[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 12:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages2[25], NULL, ecran, &position);
-                            carte[i][j] = 26; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else if ( tileSet == 8) {
-                            if ( boss >= 7 ) { SDL_BlitSurface(mapImages2[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 13:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages2[26], NULL, ecran, &position);
-                            carte[i][j] = 27; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else if ( tileSet == 8) {
-                            if ( boss >= 8 ) { SDL_BlitSurface(mapImages2[20], NULL, ecran, &position);
-                            carte[i][j] = 21; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 14:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages2[27], NULL, ecran, &position);
-                            carte[i][j] = 28; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 15:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages2[28], NULL, ecran, &position);
-                            carte[i][j] = 29; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 16:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages2[29], NULL, ecran, &position);
-                            carte[i][j] = 30; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 17:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages2[30], NULL, ecran, &position);
-                            carte[i][j] = 31; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 18:
-                         if ( tileSet == 2 || tileSet == 9 ) {
-                            if ( ValeurSwitch ( level ) == 0 ) { SDL_BlitSurface(mapImages2[31], NULL, ecran, &position);
-                            carte[i][j] = 32; }
-                            else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position); }
-                        else SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 19:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 20:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 21:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 22:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 23:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 24:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 25:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 26:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 27:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 28:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 29:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 30:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 31:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 32:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 33:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 34:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 35:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 36:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 37:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 38:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 39:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 40:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 41:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 42:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 43:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 44:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 45:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 46:
-                        if ( ValeurCoffre( level ) == 1 ) SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        else SDL_BlitSurface(mapImages2[carte[i][j]], NULL, ecran, &position);
-                        break;
-                    case 47:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 48:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 49:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 50:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 51:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 52:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-                    case 53:
-                        SDL_BlitSurface(mapImages2[carte[i][j]-1], NULL, ecran, &position);
-                        break;
-
-                }
-            }
-        }
-
-}
 
 
     return 0;
@@ -600,7 +233,7 @@ switch(deplacement)
                             positionMario.y -= x; break;
 
                         case BAS:
-                            if (positionMario.y >= ecran->h - 80) break;
+                            if (positionMario.y >= orig_height - 80) break;
                             if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46) break;
@@ -609,7 +242,7 @@ switch(deplacement)
 
 
                         case DROITE:
-                            if (positionMario.x >= ecran->w - 40) break;
+                            if (positionMario.x >= orig_width - 40) break;
                             if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] <= 20) break;
                             if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 46) break;
@@ -654,7 +287,7 @@ switch(deplacement)
                             positionEnnemi.y -= x; break;
 
                         case BAS:
-                            if (positionEnnemi.y >= ecran->h - 80) break;
+                            if (positionEnnemi.y >= orig_height - 80) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC] [(positionEnnemi.y + 2) / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC + 1] [(positionEnnemi.y + 2) / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC] [(positionEnnemi.y + 2) / TAILLE_BLOC + 1] >= 46) break;
@@ -663,7 +296,7 @@ switch(deplacement)
 
 
                         case DROITE:
-                            if (positionEnnemi.x >= ecran->w - 35) break;
+                            if (positionEnnemi.x >= orig_width - 35) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 1] [positionEnnemi.y / TAILLE_BLOC] <= 20) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 1] [positionEnnemi.y / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 1] [positionEnnemi.y / TAILLE_BLOC] >= 46) break;
@@ -710,7 +343,7 @@ switch(deplacement)
                             positionEnnemi.y -= x; break;
 
                         case BAS:
-                            if (positionEnnemi.y >= ecran->h - 80) break;
+                            if (positionEnnemi.y >= orig_height - 80) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC]     [(positionEnnemi.y) / TAILLE_BLOC + 3] <= 20) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC + 3] [(positionEnnemi.y) / TAILLE_BLOC + 3] <= 20) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC]     [(positionEnnemi.y) / TAILLE_BLOC + 3] >= 46) break;
@@ -719,7 +352,7 @@ switch(deplacement)
 
 
                         case DROITE:
-                            if (positionEnnemi.x >= ecran->w - 35) break;
+                            if (positionEnnemi.x >= orig_width - 35) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 3] [positionEnnemi.y / TAILLE_BLOC] <= 20) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 3] [positionEnnemi.y / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 3] [positionEnnemi.y / TAILLE_BLOC] >= 46) break;
@@ -767,7 +400,7 @@ switch(deplacement)
                             positionEnnemi.y -= x; break;
 
                         case BAS:
-                            if (positionEnnemi.y >= ecran->h - 80) break;
+                            if (positionEnnemi.y >= orig_height - 80) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC] [(positionEnnemi.y + 2) / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC + 1] [(positionEnnemi.y + 2) / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC] [(positionEnnemi.y + 2) / TAILLE_BLOC + 1] >= 46) break;
@@ -776,7 +409,7 @@ switch(deplacement)
 
 
                         case DROITE:
-                            if (positionEnnemi.x >= ecran->w - 35) break;
+                            if (positionEnnemi.x >= orig_width - 35) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 1] [positionEnnemi.y / TAILLE_BLOC] <= 20) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 1] [positionEnnemi.y / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 1] [positionEnnemi.y / TAILLE_BLOC] >= 46) break;
@@ -823,7 +456,7 @@ switch(deplacement)
                             positionEnnemi.y -= x; break;
 
                         case BAS:
-                            if (positionEnnemi.y >= ecran->h - 80) break;
+                            if (positionEnnemi.y >= orig_height - 80) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC] [(positionEnnemi.y + 2) / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC + 1] [(positionEnnemi.y + 2) / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[positionEnnemi.x / TAILLE_BLOC] [(positionEnnemi.y + 2) / TAILLE_BLOC + 1] >= 46) break;
@@ -832,7 +465,7 @@ switch(deplacement)
 
 
                         case DROITE:
-                            if (positionEnnemi.x >= ecran->w - 35) break;
+                            if (positionEnnemi.x >= orig_width - 35) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 1] [positionEnnemi.y / TAILLE_BLOC] <= 20) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 1] [positionEnnemi.y / TAILLE_BLOC + 1] <= 20) break;
                             if (carte[(positionEnnemi.x + 2) / TAILLE_BLOC + 1] [positionEnnemi.y / TAILLE_BLOC] >= 46) break;
@@ -963,7 +596,7 @@ int AfficheTexteItems (SDL_Surface *ecran, TTF_Font *police, char Chaine[50], SD
     //Affichage du texte : pour afficher le level en bas
         // sprintf(Chaine, "Level");
         texte = TTF_RenderText_Blended(police, Chaine, couleurBlanche);
-        SDL_BlitSurface(texte, NULL, ecran, &position);
+        BlitSprite(texte, ecran, &position);
 
 
     //On libere la memoire sinon elle gonfle
@@ -1044,20 +677,20 @@ int AfficheDialogues (SDL_Surface *ecran, TTF_Font *police, int dialogue)
    chaine4[strlen(chaine4) - 1] = '\0';
 
    SDL_Surface *texte1 = NULL, *texte2 = NULL, *texte3 = NULL, *texte4 = NULL,*fond = NULL;
-   fond = loadImage("fond/dialog.bmp");
-   SDL_BlitSurface(fond, NULL, ecran, &posD);
+   fond = loadScreenImage("fond/dialog.bmp");
+   BlitSprite(fond, ecran, &posD);
 
     texte1 = TTF_RenderText_Blended(police, chaine1, couleurBlanche);
-    SDL_BlitSurface(texte1, NULL, ecran, &posT1);
+    BlitSprite(texte1, ecran, &posT1);
     texte2 = TTF_RenderText_Blended(police, chaine2, couleurBlanche);
-    SDL_BlitSurface(texte2, NULL, ecran, &posT2);
+    BlitSprite(texte2, ecran, &posT2);
     texte3 = TTF_RenderText_Blended(police, chaine3, couleurBlanche);
-    SDL_BlitSurface(texte3, NULL, ecran, &posT3);
+    BlitSprite(texte3, ecran, &posT3);
     texte4 = TTF_RenderText_Blended(police, chaine4, couleurBlanche);
-    SDL_BlitSurface(texte4, NULL, ecran, &posT4);
+    BlitSprite(texte4, ecran, &posT4);
 
     //On affiche
-    SDL_Flip(ecran);
+    FlipScreen();
 
     //SDL_Delay (3000);
 
@@ -1067,9 +700,14 @@ int AfficheDialogues (SDL_Surface *ecran, TTF_Font *police, int dialogue)
 {
     SDL_Event event;
 
-    SDL_PollEvent(&event);
+    SDL_Delay(10);
+    while (SDL_PollEvent(&event))
         switch(event.type)
         {
+            case SDL_QUIT:
+                continuer = 0;
+                event.type=0;
+                break;
             case SDL_KEYDOWN:
                 if (tempoTouche + 1000 < SDL_GetTicks()) {
                     continuer = 0;
@@ -1090,9 +728,6 @@ int AfficheDialogues (SDL_Surface *ecran, TTF_Font *police, int dialogue)
                     }
         }
 
-
-
-
     }
 
 
@@ -1112,22 +747,15 @@ int AfficheDialogues (SDL_Surface *ecran, TTF_Font *police, int dialogue)
 }
 
 
-void title ( SDL_Surface *ecran, int *potion, int *coeur, int *coeurmax, int *money, int *level, int *power, int *boss, int *key, int *baton )
+int title ( SDL_Surface *ecran, int *potion, int *coeur, int *coeurmax, int *money, int *level, int *power, int *boss, int *key, int *baton )
 {
 
 unsigned int frameLimit = SDL_GetTicks() + 16;
 int continuer = 1;
-FILE* fichier = NULL;
-FILE* fSrc = NULL;
-FILE* fDest = NULL;
 int timer = SDL_GetTicks();
-char buffer[512];
-int NbLus;
-int a = 0, b = 0, c = 0, i = 0, caractereLu = 0;
-
 
 SDL_Surface *titre = NULL;
-titre = loadImage("fond/title.jpg");
+titre = loadFullScreenImage("fond/title.jpg");
 
 SDL_Rect pos;
        pos.x = 0;
@@ -1136,7 +764,8 @@ SDL_Rect pos;
 SDL_BlitSurface(titre, NULL, ecran, &pos);
 
 //On affiche
-    SDL_Flip(ecran);
+    FlipScreen();
+
 
 
     while (continuer)
@@ -1149,13 +778,20 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
 
 
 
-    if ( timer + 500 < SDL_GetTicks() )
-    {
+        if ( timer + 500 < SDL_GetTicks() )
+        {
+
+                    if (input.quit)
+                    {
+                        input.timer = SDL_GetTicks();
+                        SDL_FreeSurface(titre);
+                        return 0;
+                    }
 
                     if (input.un)
                     {
 
-                        input.enter = input.un = 0;
+                        input.enter = input.un = input.escape = 0;
                         input.timer = SDL_GetTicks();
                         SDL_FreeSurface(titre);
                         continuer = 0;
@@ -1165,442 +801,33 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
                     if (input.deux)
                     {
 
-                        input.enter = input.deux = 0;
+                        input.enter = input.deux = input.escape = 0;
                         input.timer = SDL_GetTicks();
                         SDL_FreeSurface(titre);
-                        fichier = fopen("save.lvl", "r");
-        for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            *level = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-
-        for (i = 1 ; i < 3 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-
-                    break;
-                           } }
-            *coeur = (a * 10) + b;
-            a = 0; b = 0; c = 0;
-
-             for (i = 1 ; i < 3 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-
-                    break;
-                           } }
-            *coeurmax = (a * 10) + b;
-            a = 0; b = 0; c = 0;
-                             caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *potion = 0;
-                    break;
-                case '1':
-                      *potion = 1;
-                    break;
-                case '2':
-                       *potion = 2;
-                    break;
-                case '3':
-                       *potion = 3;
-                    break;
-                case '4':
-                       *potion = 4;
-                    break;
-                case '5':
-                       *potion = 5;
-                    break;
-                case '6':
-                       *potion = 6;
-                    break;
-                case '7':
-                       *potion = 7;
-                    break;
-                case '8':
-                       *potion = 8;
-                    break;
-                case '9':
-                       *potion = 9;
-                    break;
-                           }
-
-                               caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *power = 0;
-                    break;
-                case '1':
-                      *power = 1;
-                    break;
-                case '2':
-                       *power = 2;
-                    break;
-                case '3':
-                       *power = 3;
-                    break;
-                case '4':
-                       *power = 4;
-                    break;
-                case '5':
-                       *power = 5;
-                    break;
-                case '6':
-                       *power = 6;
-                    break;
-                case '7':
-                       *power = 7;
-                    break;
-                case '8':
-                       *power = 8;
-                    break;
-                case '9':
-                       *power = 9;
-                    break;
-                           }
-
-                                 caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *boss = 0;
-                    break;
-                case '1':
-                      *boss = 1;
-                    break;
-                case '2':
-                       *boss = 2;
-                    break;
-                case '3':
-                       *boss = 3;
-                    break;
-                case '4':
-                       *boss = 4;
-                    break;
-                case '5':
-                       *boss = 5;
-                    break;
-                case '6':
-                       *boss = 6;
-                    break;
-                case '7':
-                       *boss = 7;
-                    break;
-                case '8':
-                       *boss = 8;
-                    break;
-                case '9':
-                       *boss = 9;
-                    break;
-                           }
-
-            for (i = 1 ; i < 4 ; i++) {
-                caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            *money = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-
-                                caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *key = 0;
-                    break;
-                case '1':
-                      *key = 1;
-                    break;
-                case '2':
-                       *key = 2;
-                    break;
-                case '3':
-                       *key = 3;
-                    break;
-                case '4':
-                       *key = 4;
-                    break;
-                case '5':
-                       *key = 5;
-                    break;
-                case '6':
-                       *key = 6;
-                    break;
-                case '7':
-                       *key = 7;
-                    break;
-                case '8':
-                       *key = 8;
-                    break;
-                case '9':
-                       *key = 9;
-                    break;
-                           }
-
-                               caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *baton = 0;
-                    break;
-                case '1':
-                      *baton = 1;
-                    break;
-                case '2':
-                       *baton = 2;
-                    break;
-                case '3':
-                       *baton = 3;
-                    break;
-                case '4':
-                       *baton = 4;
-                    break;
-                case '5':
-                       *baton = 5;
-                    break;
-                case '6':
-                       *baton = 6;
-                    break;
-                case '7':
-                       *baton = 7;
-                    break;
-                case '8':
-                       *baton = 8;
-                    break;
-                case '9':
-                       *baton = 9;
-                    break;
-                           }
-                        fclose(fichier);
-                        fSrc = fopen("savecoffres.lvl", "r");
-                        fDest = fopen("coffres.lvl", "w+");
-                        while ((NbLus = fread(buffer, 1, 512, fSrc)) != 0)
-                        fwrite(buffer, 1, NbLus, fDest);
-                        fclose(fDest);
-                        fclose(fSrc);
-                        fSrc = fopen("saveswitchs.lvl", "r");
-                        fDest = fopen("switchs.lvl", "w+");
-                        while ((NbLus = fread(buffer, 1, 512, fSrc)) != 0)
-                        fwrite(buffer, 1, NbLus, fDest);
-                        fclose(fDest);
-                        fclose(fSrc);
+                        loadSavedGame(coeur, potion, coeurmax, money, level, power, boss, key, baton);
                         continuer = 0;
                     }
 
                        if (input.trois)
                     {
 
-                        input.enter = input.trois = 0;
+                        input.enter = input.trois = input.escape = 0;
                         input.timer = SDL_GetTicks();
-                        SDL_FreeSurface(titre);
-                        continuer = 0;
-                        credits( ecran, potion, coeur, coeurmax, money, level, power, boss, key, baton );
+                        continuer = credits( ecran );
+                        if (continuer)
+                        {
+                            SDL_BlitSurface(titre, NULL, ecran, &pos);
+
+                        //On affiche
+                            FlipScreen();
+                        }
+                        else
+                        {
+                            SDL_FreeSurface(titre);
+                        }
                     }
 
-        input.timer = SDL_GetTicks();
+            input.timer = SDL_GetTicks();
 
         }
 
@@ -1610,9 +837,8 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
 
     }
 
-SDL_FreeSurface(titre);
-
-
+    ClearScreen();
+    return 1;
 }
 
 
@@ -1620,15 +846,9 @@ void game_over ( SDL_Surface *ecran, int *coeur, int *continuer, int *potion, in
 {
 int continuer2 = 1;
 SDL_Event event;
-FILE* fichier = NULL;
-FILE* fSrc = NULL;
-FILE* fDest = NULL;
-char buffer[512];
-int NbLus;
-int a = 0, b = 0, c = 0, i = 0, caractereLu = 0;
 
 SDL_Surface *titre = NULL;
-titre = loadImage("fond/gameover.jpg");
+titre = loadFullScreenImage("fond/gameover.jpg");
 
 SDL_Rect pos;
        pos.x = 0;
@@ -1637,880 +857,36 @@ SDL_Rect pos;
 SDL_BlitSurface(titre, NULL, ecran, &pos);
 
 //On affiche
-    SDL_Flip(ecran);
+    FlipScreen();
 
 
     while (continuer2)
 {
+    SDL_Delay(10);
 
-
-    SDL_PollEvent(&event);
+    while (SDL_PollEvent(&event))
         switch(event.type)
         {
+            case SDL_QUIT:
+                *continuer = 0;
+                continuer2 = 0;
+                break;
             case SDL_KEYDOWN:
                  switch(event.key.keysym.sym)
                         {
                         case SDLK_KP1:
-                        fichier = fopen("save.lvl", "r");
-        for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            *level = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-
-        for (i = 1 ; i < 3 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-
-                    break;
-                           } }
-            *coeur = (a * 10) + b;
-            a = 0; b = 0; c = 0;
-
-             for (i = 1 ; i < 3 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-
-                    break;
-                           } }
-            *coeurmax = (a * 10) + b;
-            a = 0; b = 0; c = 0;
-                             caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *potion = 0;
-                    break;
-                case '1':
-                      *potion = 1;
-                    break;
-                case '2':
-                       *potion = 2;
-                    break;
-                case '3':
-                       *potion = 3;
-                    break;
-                case '4':
-                       *potion = 4;
-                    break;
-                case '5':
-                       *potion = 5;
-                    break;
-                case '6':
-                       *potion = 6;
-                    break;
-                case '7':
-                       *potion = 7;
-                    break;
-                case '8':
-                       *potion = 8;
-                    break;
-                case '9':
-                       *potion = 9;
-                    break;
-                           }
-
-                               caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *power = 0;
-                    break;
-                case '1':
-                      *power = 1;
-                    break;
-                case '2':
-                       *power = 2;
-                    break;
-                case '3':
-                       *power = 3;
-                    break;
-                case '4':
-                       *power = 4;
-                    break;
-                case '5':
-                       *power = 5;
-                    break;
-                case '6':
-                       *power = 6;
-                    break;
-                case '7':
-                       *power = 7;
-                    break;
-                case '8':
-                       *power = 8;
-                    break;
-                case '9':
-                       *power = 9;
-                    break;
-                           }
-
-                                 caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *boss = 0;
-                    break;
-                case '1':
-                      *boss = 1;
-                    break;
-                case '2':
-                       *boss = 2;
-                    break;
-                case '3':
-                       *boss = 3;
-                    break;
-                case '4':
-                       *boss = 4;
-                    break;
-                case '5':
-                       *boss = 5;
-                    break;
-                case '6':
-                       *boss = 6;
-                    break;
-                case '7':
-                       *boss = 7;
-                    break;
-                case '8':
-                       *boss = 8;
-                    break;
-                case '9':
-                       *boss = 9;
-                    break;
-                           }
-
-            for (i = 1 ; i < 4 ; i++) {
-                caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            *money = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-
-                                caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *key = 0;
-                    break;
-                case '1':
-                      *key = 1;
-                    break;
-                case '2':
-                       *key = 2;
-                    break;
-                case '3':
-                       *key = 3;
-                    break;
-                case '4':
-                       *key = 4;
-                    break;
-                case '5':
-                       *key = 5;
-                    break;
-                case '6':
-                       *key = 6;
-                    break;
-                case '7':
-                       *key = 7;
-                    break;
-                case '8':
-                       *key = 8;
-                    break;
-                case '9':
-                       *key = 9;
-                    break;
-                           }
-
-                               caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *baton = 0;
-                    break;
-                case '1':
-                      *baton = 1;
-                    break;
-                case '2':
-                       *baton = 2;
-                    break;
-                case '3':
-                       *baton = 3;
-                    break;
-                case '4':
-                       *baton = 4;
-                    break;
-                case '5':
-                       *baton = 5;
-                    break;
-                case '6':
-                       *baton = 6;
-                    break;
-                case '7':
-                       *baton = 7;
-                    break;
-                case '8':
-                       *baton = 8;
-                    break;
-                case '9':
-                       *baton = 9;
-                    break;
-                           }
-                        fclose(fichier);
-                        fSrc = fopen("savecoffres.lvl", "r");
-                        fDest = fopen("coffres.lvl", "w+");
-                        while ((NbLus = fread(buffer, 1, 512, fSrc)) != 0)
-                        fwrite(buffer, 1, NbLus, fDest);
-                        fclose(fDest);
-                        fclose(fSrc);
-                        fSrc = fopen("saveswitchs.lvl", "r");
-                        fDest = fopen("switchs.lvl", "w+");
-                        while ((NbLus = fread(buffer, 1, 512, fSrc)) != 0)
-                        fwrite(buffer, 1, NbLus, fDest);
-                        fclose(fDest);
-                        fclose(fSrc);
-                        continuer2 = 0;
-                        break;
-
                         case SDLK_1:
-                        fichier = fopen("save.lvl", "r");
-        for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            *level = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-
-        for (i = 1 ; i < 3 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-
-                    break;
-                           } }
-            *coeur = (a * 10) + b;
-            a = 0; b = 0; c = 0;
-
-             for (i = 1 ; i < 3 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-
-                    break;
-                           } }
-            *coeurmax = (a * 10) + b;
-            a = 0; b = 0; c = 0;
-                             caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *potion = 0;
-                    break;
-                case '1':
-                      *potion = 1;
-                    break;
-                case '2':
-                       *potion = 2;
-                    break;
-                case '3':
-                       *potion = 3;
-                    break;
-                case '4':
-                       *potion = 4;
-                    break;
-                case '5':
-                       *potion = 5;
-                    break;
-                case '6':
-                       *potion = 6;
-                    break;
-                case '7':
-                       *potion = 7;
-                    break;
-                case '8':
-                       *potion = 8;
-                    break;
-                case '9':
-                       *potion = 9;
-                    break;
-                           }
-
-                               caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *power = 0;
-                    break;
-                case '1':
-                      *power = 1;
-                    break;
-                case '2':
-                       *power = 2;
-                    break;
-                case '3':
-                       *power = 3;
-                    break;
-                case '4':
-                       *power = 4;
-                    break;
-                case '5':
-                       *power = 5;
-                    break;
-                case '6':
-                       *power = 6;
-                    break;
-                case '7':
-                       *power = 7;
-                    break;
-                case '8':
-                       *power = 8;
-                    break;
-                case '9':
-                       *power = 9;
-                    break;
-                           }
-
-                                 caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *boss = 0;
-                    break;
-                case '1':
-                      *boss = 1;
-                    break;
-                case '2':
-                       *boss = 2;
-                    break;
-                case '3':
-                       *boss = 3;
-                    break;
-                case '4':
-                       *boss = 4;
-                    break;
-                case '5':
-                       *boss = 5;
-                    break;
-                case '6':
-                       *boss = 6;
-                    break;
-                case '7':
-                       *boss = 7;
-                    break;
-                case '8':
-                       *boss = 8;
-                    break;
-                case '9':
-                       *boss = 9;
-                    break;
-                           }
-
-            for (i = 1 ; i < 4 ; i++) {
-                caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            *money = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-
-                                caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *key = 0;
-                    break;
-                case '1':
-                      *key = 1;
-                    break;
-                case '2':
-                       *key = 2;
-                    break;
-                case '3':
-                       *key = 3;
-                    break;
-                case '4':
-                       *key = 4;
-                    break;
-                case '5':
-                       *key = 5;
-                    break;
-                case '6':
-                       *key = 6;
-                    break;
-                case '7':
-                       *key = 7;
-                    break;
-                case '8':
-                       *key = 8;
-                    break;
-                case '9':
-                       *key = 9;
-                    break;
-                           }
-
-                               caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      *baton = 0;
-                    break;
-                case '1':
-                      *baton = 1;
-                    break;
-                case '2':
-                       *baton = 2;
-                    break;
-                case '3':
-                       *baton = 3;
-                    break;
-                case '4':
-                       *baton = 4;
-                    break;
-                case '5':
-                       *baton = 5;
-                    break;
-                case '6':
-                       *baton = 6;
-                    break;
-                case '7':
-                       *baton = 7;
-                    break;
-                case '8':
-                       *baton = 8;
-                    break;
-                case '9':
-                       *baton = 9;
-                    break;
-                           }
-                        fclose(fichier);
-                        fSrc = fopen("savecoffres.lvl", "r");
-                        fDest = fopen("coffres.lvl", "w+");
-                        while ((NbLus = fread(buffer, 1, 512, fSrc)) != 0)
-                        fwrite(buffer, 1, NbLus, fDest);
-                        fclose(fDest);
-                        fclose(fSrc);
-                        fSrc = fopen("saveswitchs.lvl", "r");
-                        fDest = fopen("switchs.lvl", "w+");
-                        while ((NbLus = fread(buffer, 1, 512, fSrc)) != 0)
-                        fwrite(buffer, 1, NbLus, fDest);
-                        fclose(fDest);
-                        fclose(fSrc);
+                        loadSavedGame(coeur, potion, coeurmax, money, level, power, boss, key, baton);
                         continuer2 = 0;
                         break;
 
                         case SDLK_KP2:
-                        *continuer = 0;
-                        continuer2 = 0;
-                        break;
-
                         case SDLK_2:
                         *continuer = 0;
                         continuer2 = 0;
                         break;
 
                         case SDLK_KP3:
-                        *coeur = 5;
-                        continuer2 = 0;
-                        break;
-
                         case SDLK_3:
                         *coeur = 5;
                         continuer2 = 0;
@@ -2525,23 +901,21 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
             break;
         }
 
-
     }
 
 SDL_FreeSurface( titre );
 
-
+    ClearScreen();
 }
 
 
-void credits ( SDL_Surface *ecran, int *potion, int *coeur, int *coeurmax, int *money, int *level, int *power, int *boss, int *key, int *baton )
+int credits ( SDL_Surface *ecran )
 {
 
     unsigned int frameLimit = SDL_GetTicks() + 16;
-    int go = 1;
     int timer = SDL_GetTicks();
     SDL_Surface *titre = NULL;
-    titre = loadImage("fond/credits.jpg");
+    titre = loadFullScreenImage("fond/credits.jpg");
 
     SDL_Rect pos;
        pos.x = 0;
@@ -2549,9 +923,9 @@ void credits ( SDL_Surface *ecran, int *potion, int *coeur, int *coeurmax, int *
 
     SDL_BlitSurface(titre, NULL, ecran, &pos);
 
-    SDL_Flip(ecran);
+    FlipScreen();
 
-    while (go)
+    while (1)
     {
 
         /* Keymapping des touches concernées et gestion du joystick */
@@ -2560,13 +934,13 @@ void credits ( SDL_Surface *ecran, int *potion, int *coeur, int *coeurmax, int *
 
         if ( timer + 500 < SDL_GetTicks() )
         {
-            if (input.enter)
+            if (input.quit || input.enter || input.escape)
                 {
-                    input.enter = input.pause = 0;
+                    input.enter = input.pause = input.escape = 0;
                     input.timer = SDL_GetTicks();
-                    go = 0;
                     SDL_FreeSurface(titre);
-                    title( ecran, potion, coeur, coeurmax, money, level, power, boss, key, baton );
+                    ClearScreen();
+                    return (input.quit)?0:1;
                 }
 
         }
@@ -2580,46 +954,41 @@ void credits ( SDL_Surface *ecran, int *potion, int *coeur, int *coeurmax, int *
 }
 
 
-void shop ( SDL_Surface *ecran, TTF_Font *police, int *potion, int *coeur, int *coeurmax, int *money, int *level, int *power, int *boss, int *key, int *baton )
+int shop ( SDL_Surface *ecran, TTF_Font *police, int *potion, int *coeur, int *coeurmax, int *money, int *level, int *power, int *boss, int *key, int *baton )
 {
 int continuer2 = 1;
 SDL_Event event;
 FILE* fichier = NULL;
-FILE* fSrc = NULL;
-FILE* fDest = NULL;
-char buffer[512];
-int NbLus;
 
 
 SDL_Surface *shop = NULL;
-shop = loadImage("fond/shop.jpg");
+shop = loadScreenImage("fond/shop.jpg");
 
 SDL_Rect pos;
-       pos.x = 0;
+       pos.x = 1;
        pos.y = 0;
 
-SDL_BlitSurface(shop, NULL, ecran, &pos);
+BlitSprite(shop, ecran, &pos);
 
 //On affiche
-    SDL_Flip(ecran);
+    FlipScreen();
 
 
     while (continuer2)
 {
+    SDL_Delay(10);
 
-
-    SDL_PollEvent(&event);
+    while (SDL_PollEvent(&event))
         switch(event.type)
         {
+            case SDL_QUIT:
+                SDL_FreeSurface( shop );
+                return 0;
+
             case SDL_KEYDOWN:
                  switch(event.key.keysym.sym)
                         {
                         case SDLK_KP1:
-                        if (*money >= 30) { *money -= 30; *coeur=*coeurmax; AfficheDialogues (ecran, police, 988); }
-                        else AfficheDialogues (ecran, police, 987);
-                        continuer2 = 0;
-                        break;
-
                         case SDLK_1:
                         if (*money >= 30) { *money -= 30; *coeur=*coeurmax; AfficheDialogues (ecran, police, 988); }
                         else AfficheDialogues (ecran, police, 987);
@@ -2627,38 +996,6 @@ SDL_BlitSurface(shop, NULL, ecran, &pos);
                         break;
 
                         case SDLK_KP2:
-                        fichier = fopen("save.lvl", "w+");
-                        if (*level <= 9) fprintf(fichier, "00%d", *level);
-                        else if (*level <= 99) fprintf(fichier, "0%d", *level);
-                        else if (*level <= 999) fprintf(fichier, "%d", *level);
-                        if (*coeur <= 9) fprintf(fichier, "0%d", *coeur);
-                        else if (*coeur <= 99) fprintf(fichier, "%d", *coeur);
-                        if (*coeurmax <= 9) fprintf(fichier, "0%d", *coeurmax);
-                        else if (*coeurmax <= 99) fprintf(fichier, "%d", *coeurmax);
-                        fprintf(fichier, "%d", *potion);
-                        fprintf(fichier, "%d", *power);
-                        fprintf(fichier, "%d", *boss);
-                        if (*money <= 9) fprintf(fichier, "00%d", *money);
-                        else if (*money <= 99) fprintf(fichier, "0%d", *money);
-                        else if (*money <= 999) fprintf(fichier, "%d", *money);
-                        fprintf(fichier, "%d", *key);
-                        fprintf(fichier, "%d", *baton);
-                        fclose(fichier);
-                        fSrc = fopen("coffres.lvl", "r");
-                        fDest = fopen("savecoffres.lvl", "w+");
-                        while ((NbLus = fread(buffer, 1, 512, fSrc)) != 0)
-                        fwrite(buffer, 1, NbLus, fDest);
-                        fclose(fDest);
-                        fclose(fSrc);
-                        fSrc = fopen("switchs.lvl", "r");
-                        fDest = fopen("saveswitchs.lvl", "w+");
-                        while ((NbLus = fread(buffer, 1, 512, fSrc)) != 0)
-                        fwrite(buffer, 1, NbLus, fDest);
-                        fclose(fDest);
-                        fclose(fSrc);
-                        continuer2 = 0;
-                        break;
-
                         case SDLK_2:
                         fichier = fopen("save.lvl", "w+");
                         if (*level <= 9) fprintf(fichier, "00%d", *level);
@@ -2677,38 +1014,29 @@ SDL_BlitSurface(shop, NULL, ecran, &pos);
                         fprintf(fichier, "%d", *key);
                         fprintf(fichier, "%d", *baton);
                         fclose(fichier);
-                        fSrc = fopen("coffres.lvl", "r");
-                        fDest = fopen("savecoffres.lvl", "w+");
-                        while ((NbLus = fread(buffer, 1, 512, fSrc)) != 0)
-                        fwrite(buffer, 1, NbLus, fDest);
-                        fclose(fDest);
-                        fclose(fSrc);
-                        fSrc = fopen("switchs.lvl", "r");
-                        fDest = fopen("saveswitchs.lvl", "w+");
-                        while ((NbLus = fread(buffer, 1, 512, fSrc)) != 0)
-                        fwrite(buffer, 1, NbLus, fDest);
-                        fclose(fDest);
-                        fclose(fSrc);
+
+                        fichier = fopen("savecoffres.lvl", "w+");
+                        writeCoffres(fichier);
+                        fclose(fichier);
+
+                        fichier = fopen("saveswitchs.lvl", "w+");
+                        writeSwitchs(fichier);
+                        fclose(fichier);
+
                         continuer2 = 0;
                         break;
 
                         case SDLK_KP3:
-                        if (*money >= 100) { *money -= 100; *potion+= 1; AfficheDialogues (ecran, police, 986); }
-                        else AfficheDialogues (ecran, police, 987);
-                        continuer2 = 0;
-                        break;
-
                         case SDLK_3:
                         if (*money >= 100) { *money -= 100; *potion+= 1; AfficheDialogues (ecran, police, 986); }
                         else AfficheDialogues (ecran, police, 987);
                         continuer2 = 0;
                         break;
 
+                        case SDLK_ESCAPE:
                         case SDLK_SPACE:
-                        continuer2 = 0;
-                        break;
-
                         case SDLK_RETURN:
+                        case SDLK_KP_ENTER:
                         continuer2 = 0;
                         break;
 
@@ -2727,13 +1055,11 @@ SDL_BlitSurface(shop, NULL, ecran, &pos);
                     break;
                     }
         }
-
-
     }
 
 SDL_FreeSurface( shop );
 
-
+    return 1;
 }
 
 
@@ -2743,7 +1069,7 @@ int continuer2 = 1;
 SDL_Event event;
 
 SDL_Surface *titre = NULL;
-titre = loadImage("fond/fin.jpg");
+titre = loadFullScreenImage("fond/fin.jpg");
 
 SDL_Rect pos;
        pos.x = 0;
@@ -2752,30 +1078,27 @@ SDL_Rect pos;
 SDL_BlitSurface(titre, NULL, ecran, &pos);
 
 //On affiche
-    SDL_Flip(ecran);
+    FlipScreen();
 
 
     while (continuer2)
 {
+    SDL_Delay(10);
 
-
-    SDL_PollEvent(&event);
+    while (SDL_PollEvent(&event))
         switch(event.type)
         {
+            case SDL_QUIT:
+                *continuer = 0;
+                continuer2 = 0;
+                break;
             case SDL_KEYDOWN:
                  switch(event.key.keysym.sym)
                         {
 
                         case SDLK_ESCAPE:
-                        *continuer = 0;
-                        continuer2 = 0;
-                        break;
-
                         case SDLK_RETURN:
-                        *continuer = 0;
-                        continuer2 = 0;
-                        break;
-
+                        case SDLK_KP_ENTER:
                         case SDLK_SPACE:
                         *continuer = 0;
                         continuer2 = 0;
@@ -2790,20 +1113,760 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
             break;
         }
 
-
     }
 
 SDL_FreeSurface( titre );
 
+    ClearScreen();
+}
+
+void loadSavedGame(int *coeur, int *potion, int *coeurmax, int *money, int *level, int *power, int *boss, int *key, int *baton)
+{
+FILE* fichier = NULL;
+
+    fichier = fopen("save.lvl", "r");
+
+    *level    = readNumber(fichier, 3);
+    *coeur    = readNumber(fichier, 2);
+    *coeurmax = readNumber(fichier, 2);
+    *potion   = readNumber(fichier, 1);
+    *power    = readNumber(fichier, 1);
+    *boss     = readNumber(fichier, 1);
+    *money    = readNumber(fichier, 3);
+    *key      = readNumber(fichier, 1);
+    *baton    = readNumber(fichier, 1);
+
+    fclose(fichier);
+
+    fichier = fopen("savecoffres.lvl", "r");
+    readCoffres(fichier);
+    fclose(fichier);
+
+    fichier = fopen("saveswitchs.lvl", "r");
+    readSwitchs(fichier);
+    fclose(fichier);
+}
+
+
+#ifdef GP2X
+
+static void ResizeImage_32_RGB(uint32_t *src, uint16_t *dst, int srcwidth, int srcheight, int srcpitch, int dstwidth, int dstheight, int dstpitch)
+{
+    unsigned int dwidth, dheight, xdiff, ydiff, xpos, ypos, xstart;
+    uint32_t *linesrc;
+    uint16_t *linedst;
+
+#define SRC_RECT_WIDTH srcwidth
+#define SRC_RECT_HEIGHT srcheight
+#define SRC_RECT_X 0
+#define SRC_RECT_Y 0
+#define DST_RECT_WIDTH dstwidth
+#define DST_RECT_HEIGHT dstheight
+#define DST_RECT_X 0
+#define DST_RECT_Y 0
+
+#define SRC_PITCH srcpitch
+#define DST_PITCH dstpitch
+
+//#define COPY_PIXEL(dstpix, a) { dstpix = ( (((a) & 0xf8) >> 3) | (((a) & 0xfc00) >> 5) | (((a) & 0xf80000) >> 8) ); }
+//#define INTERPOLATE_2_PIXELS_1_1(dstpix, a, b) { dstpix = ( (((((a) & 0xff) + ((b) & 0xff)) & 0x1f0) >> 4) | (((((a) & 0xff00) + ((b) & 0xff00)) & 0x1f800) >> 6) | (((((a) & 0xff0000) + ((b) & 0xff0000)) & 0x1f00000) >> 9) ); }
+
+//#define INTERPOLATE_4_PIXELS_1_1_1_1(dstpix, a, b, c, d) { dstpix = ( (((((a) & 0xff) + ((b) & 0xff) + ((c) & 0xff) + ((d) & 0xff)) & 0x3e0) >> 5) | (((((a) & 0xff00) + ((b) & 0xff00) + ((c) & 0xff00) + ((d) & 0xff00)) & 0x3f000) >> 7) | (((((a) & 0xff0000) + ((b) & 0xff0000) + ((c) & 0xff0000) + ((d) & 0xff0000)) & 0x3e00000) >> 10) ); }
+
+#define COPY_PIXEL(dstpix, a) { dstpix = ( (((a) & 0xf8) << 8) | (((a) & 0xfc00) >> 5) | (((a) & 0xf80000) >> 19) ); }
+#define INTERPOLATE_2_PIXELS_1_1(dstpix, a, b) { dstpix = ( (((((a) & 0xff) + ((b) & 0xff)) & 0x1f0) << 7) | (((((a) & 0xff00) + ((b) & 0xff00)) & 0x1f800) >> 6) | (((((a) & 0xff0000) + ((b) & 0xff0000)) & 0x1f00000) >> 20) ); }
+
+#define INTERPOLATE_4_PIXELS_1_1_1_1(dstpix, a, b, c, d) { dstpix = ( (((((a) & 0xff) + ((b) & 0xff) + ((c) & 0xff) + ((d) & 0xff)) & 0x3e0) << 6) | (((((a) & 0xff00) + ((b) & 0xff00) + ((c) & 0xff00) + ((d) & 0xff00)) & 0x3f000) >> 7) | (((((a) & 0xff0000) + ((b) & 0xff0000) + ((c) & 0xff0000) + ((d) & 0xff0000)) & 0x3e00000) >> 21) ); }
+
+    src = ((uint32_t *) (((uintptr_t)src) + SRC_RECT_Y * SRC_PITCH)) + SRC_RECT_X;
+    dst = ((uint16_t *) (((uintptr_t)dst) + DST_RECT_Y * DST_PITCH)) + DST_RECT_X;
+
+    if (SRC_RECT_WIDTH <= DST_RECT_WIDTH)
+    {
+        xstart = 0;
+    }
+    else
+    {
+        xstart = 65536 - ((DST_RECT_WIDTH << 16) / SRC_RECT_WIDTH);
+    }
+
+    if (SRC_RECT_HEIGHT <= DST_RECT_HEIGHT)
+    {
+        ypos = 0;
+    }
+    else
+    {
+        ypos = 65536 - ((DST_RECT_HEIGHT << 16) / SRC_RECT_HEIGHT);
+    }
+
+    xdiff = (SRC_RECT_WIDTH << 16) / DST_RECT_WIDTH;
+    ydiff = (SRC_RECT_HEIGHT << 16) / DST_RECT_HEIGHT;
+
+    for (dheight = DST_RECT_HEIGHT; dheight != 0; dheight--)
+    {
+        linesrc = src;
+        linedst = dst;
+        xpos = xstart;
+
+        switch ((ypos >> 14) & 3)
+        {
+            case 3:
+                linesrc = (uint32_t *) (((uintptr_t)src) + SRC_PITCH);
+            case 0:
+                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                {
+                    switch ((xpos >> 14) & 3)
+                    {
+                        case 0:
+                            COPY_PIXEL(*linedst, linesrc[0]);
+                            break;
+                        case 1:
+                        case 2:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], linesrc[1]);
+                            break;
+                        case 3:
+                            COPY_PIXEL(*linedst, linesrc[1]);
+                            break;
+                    }
+
+                    xpos += xdiff;
+                    linesrc += (xpos >> 16);
+                    xpos &= 0xffff;
+
+                    linedst ++;
+                }
+                break;
+            case 1:
+            case 2:
+                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                {
+                    switch ((xpos >> 14) & 3)
+                    {
+                        case 0:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[0]);
+                            break;
+                        case 1:
+                        case 2:
+                            INTERPOLATE_4_PIXELS_1_1_1_1(*linedst, linesrc[0], linesrc[1], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[0], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[1]);
+                            break;
+                        case 3:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[1], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[1]);
+                            break;
+                    }
+
+                    xpos += xdiff;
+                    linesrc += (xpos >> 16);
+                    xpos &= 0xffff;
+
+                    linedst ++;
+                }
+                break;
+        }
+
+
+        ypos += ydiff;
+        src = (uint32_t *) (((uintptr_t)src) + (ypos >> 16) * SRC_PITCH);
+        ypos &= 0xffff;
+
+        dst = (uint16_t *) (((uintptr_t)dst) + DST_PITCH);
+    }
+
+#undef SRC_RECT_WIDTH
+#undef SRC_RECT_HEIGHT
+#undef SRC_RECT_X
+#undef SRC_RECT_Y
+#undef DST_RECT_WIDTH
+#undef DST_RECT_HEIGHT
+#undef DST_RECT_X
+#undef DST_RECT_Y
+
+#undef SRC_PITCH
+#undef DST_PITCH
+
+#undef COPY_PIXEL
+#undef INTERPOLATE_2_PIXELS_1_1
+
+#undef INTERPOLATE_4_PIXELS_1_1_1_1
+}
+
+static void ResizeImage_24_RGB(uint8_t *src, uint16_t *dst, int srcwidth, int srcheight, int srcpitch, int dstwidth, int dstheight, int dstpitch)
+{
+    unsigned int dwidth, dheight, xdiff, ydiff, xpos, ypos, xstart;
+    uint8_t *linesrc;
+    uint16_t *linedst;
+
+#define SRC_RECT_WIDTH srcwidth
+#define SRC_RECT_HEIGHT srcheight
+#define SRC_RECT_X 0
+#define SRC_RECT_Y 0
+#define DST_RECT_WIDTH dstwidth
+#define DST_RECT_HEIGHT dstheight
+#define DST_RECT_X 0
+#define DST_RECT_Y 0
+
+#define SRC_PITCH srcpitch
+#define DST_PITCH dstpitch
+
+#define RVAL(a) ((unsigned int)((a)[0]))
+#define GVAL(a) ((unsigned int)((a)[1]))
+#define BVAL(a) ((unsigned int)((a)[2]))
+
+#define COPY_PIXEL(dstpix, a) { dstpix = ( ((RVAL(a) & 0xf8) << 8) | ((GVAL(a) & 0xfc) << 3) | ((BVAL(a) & 0xf8) >> 3) ); }
+#define INTERPOLATE_2_PIXELS_1_1(dstpix, a, b) { dstpix = ( (((RVAL(a) + RVAL(b)) & 0x1f0) << 7) | (((GVAL(a) + GVAL(b)) & 0x1f8) << 2) | (((BVAL(a) + BVAL(b)) & 0x1f0) >> 4) ); }
+
+#define INTERPOLATE_4_PIXELS_1_1_1_1(dstpix, a, b, c, d) { dstpix = ( (((RVAL(a) + RVAL(b) + RVAL(c) + RVAL(d)) & 0x3e0) << 6) | (((GVAL(a) + GVAL(b) + GVAL(c) + GVAL(d)) & 0x3f0) << 1) | (((BVAL(a) + BVAL(b) + BVAL(c) + BVAL(d)) & 0x3e0) >> 5) ); }
+
+    src += ((SRC_RECT_Y * SRC_PITCH) + SRC_RECT_X);
+    dst = ((uint16_t *) (((uintptr_t)dst) + DST_RECT_Y * DST_PITCH)) + DST_RECT_X;
+
+    if (SRC_RECT_WIDTH <= DST_RECT_WIDTH)
+    {
+        xstart = 0;
+    }
+    else
+    {
+        xstart = 65536 - ((DST_RECT_WIDTH << 16) / SRC_RECT_WIDTH);
+    }
+
+    if (SRC_RECT_HEIGHT <= DST_RECT_HEIGHT)
+    {
+        ypos = 0;
+    }
+    else
+    {
+        ypos = 65536 - ((DST_RECT_HEIGHT << 16) / SRC_RECT_HEIGHT);
+    }
+
+    xdiff = (SRC_RECT_WIDTH << 16) / DST_RECT_WIDTH;
+    ydiff = (SRC_RECT_HEIGHT << 16) / DST_RECT_HEIGHT;
+
+    for (dheight = DST_RECT_HEIGHT; dheight != 0; dheight--)
+    {
+        linesrc = src;
+        linedst = dst;
+        xpos = xstart;
+
+        switch ((ypos >> 14) & 3)
+        {
+            case 3:
+                linesrc = src + SRC_PITCH;
+            case 0:
+                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                {
+                    switch ((xpos >> 14) & 3)
+                    {
+                        case 0:
+                            COPY_PIXEL(*linedst, linesrc);
+                            break;
+                        case 1:
+                        case 2:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc, linesrc + 3);
+                            break;
+                        case 3:
+                            COPY_PIXEL(*linedst, linesrc + 3);
+                            break;
+                    }
+
+                    xpos += xdiff;
+                    linesrc += (xpos >> 16) * 3;
+                    xpos &= 0xffff;
+
+                    linedst ++;
+                }
+                break;
+            case 1:
+            case 2:
+                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                {
+                    switch ((xpos >> 14) & 3)
+                    {
+                        case 0:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc, linesrc + SRC_PITCH);
+                            break;
+                        case 1:
+                        case 2:
+                            INTERPOLATE_4_PIXELS_1_1_1_1(*linedst, linesrc, linesrc + 3, linesrc + SRC_PITCH, linesrc + SRC_PITCH + 3);
+                            break;
+                        case 3:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc + 3, linesrc + SRC_PITCH + 3);
+                            break;
+                    }
+
+                    xpos += xdiff;
+                    linesrc += (xpos >> 16) * 3;
+                    xpos &= 0xffff;
+
+                    linedst ++;
+                }
+                break;
+        }
+
+
+        ypos += ydiff;
+        src += (ypos >> 16) * SRC_PITCH;
+        ypos &= 0xffff;
+
+        dst = (uint16_t *) (((uintptr_t)dst) + DST_PITCH);
+    }
+
+#undef SRC_RECT_WIDTH
+#undef SRC_RECT_HEIGHT
+#undef SRC_RECT_X
+#undef SRC_RECT_Y
+#undef DST_RECT_WIDTH
+#undef DST_RECT_HEIGHT
+#undef DST_RECT_X
+#undef DST_RECT_Y
+
+#undef SRC_PITCH
+#undef DST_PITCH
+
+#undef RVAL
+#undef GVAL
+#undef BVAL
+
+#undef COPY_PIXEL
+#undef INTERPOLATE_2_PIXELS_1_1
+
+#undef INTERPOLATE_4_PIXELS_1_1_1_1
+}
+
+static void ResizeImage_24_BGR(uint8_t *src, uint16_t *dst, int srcwidth, int srcheight, int srcpitch, int dstwidth, int dstheight, int dstpitch)
+{
+    unsigned int dwidth, dheight, xdiff, ydiff, xpos, ypos, xstart;
+    uint8_t *linesrc;
+    uint16_t *linedst;
+
+#define SRC_RECT_WIDTH srcwidth
+#define SRC_RECT_HEIGHT srcheight
+#define SRC_RECT_X 0
+#define SRC_RECT_Y 0
+#define DST_RECT_WIDTH dstwidth
+#define DST_RECT_HEIGHT dstheight
+#define DST_RECT_X 0
+#define DST_RECT_Y 0
+
+#define SRC_PITCH srcpitch
+#define DST_PITCH dstpitch
+
+#define RVAL(a) ((unsigned int)((a)[2]))
+#define GVAL(a) ((unsigned int)((a)[1]))
+#define BVAL(a) ((unsigned int)((a)[0]))
+
+#define COPY_PIXEL(dstpix, a) { dstpix = ( ((RVAL(a) & 0xf8) << 8) | ((GVAL(a) & 0xfc) << 3) | ((BVAL(a) & 0xf8) >> 3) ); }
+#define INTERPOLATE_2_PIXELS_1_1(dstpix, a, b) { dstpix = ( (((RVAL(a) + RVAL(b)) & 0x1f0) << 7) | (((GVAL(a) + GVAL(b)) & 0x1f8) << 2) | (((BVAL(a) + BVAL(b)) & 0x1f0) >> 4) ); }
+
+#define INTERPOLATE_4_PIXELS_1_1_1_1(dstpix, a, b, c, d) { dstpix = ( (((RVAL(a) + RVAL(b) + RVAL(c) + RVAL(d)) & 0x3e0) << 6) | (((GVAL(a) + GVAL(b) + GVAL(c) + GVAL(d)) & 0x3f0) << 1) | (((BVAL(a) + BVAL(b) + BVAL(c) + BVAL(d)) & 0x3e0) >> 5) ); }
+
+    src += ((SRC_RECT_Y * SRC_PITCH) + SRC_RECT_X);
+    dst = ((uint16_t *) (((uintptr_t)dst) + DST_RECT_Y * DST_PITCH)) + DST_RECT_X;
+
+    if (SRC_RECT_WIDTH <= DST_RECT_WIDTH)
+    {
+        xstart = 0;
+    }
+    else
+    {
+        xstart = 65536 - ((DST_RECT_WIDTH << 16) / SRC_RECT_WIDTH);
+    }
+
+    if (SRC_RECT_HEIGHT <= DST_RECT_HEIGHT)
+    {
+        ypos = 0;
+    }
+    else
+    {
+        ypos = 65536 - ((DST_RECT_HEIGHT << 16) / SRC_RECT_HEIGHT);
+    }
+
+    xdiff = (SRC_RECT_WIDTH << 16) / DST_RECT_WIDTH;
+    ydiff = (SRC_RECT_HEIGHT << 16) / DST_RECT_HEIGHT;
+
+    for (dheight = DST_RECT_HEIGHT; dheight != 0; dheight--)
+    {
+        linesrc = src;
+        linedst = dst;
+        xpos = xstart;
+
+        switch ((ypos >> 14) & 3)
+        {
+            case 3:
+                linesrc = src + SRC_PITCH;
+            case 0:
+                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                {
+                    switch ((xpos >> 14) & 3)
+                    {
+                        case 0:
+                            COPY_PIXEL(*linedst, linesrc);
+                            break;
+                        case 1:
+                        case 2:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc, linesrc + 3);
+                            break;
+                        case 3:
+                            COPY_PIXEL(*linedst, linesrc + 3);
+                            break;
+                    }
+
+                    xpos += xdiff;
+                    linesrc += (xpos >> 16) * 3;
+                    xpos &= 0xffff;
+
+                    linedst ++;
+                }
+                break;
+            case 1:
+            case 2:
+                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                {
+                    switch ((xpos >> 14) & 3)
+                    {
+                        case 0:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc, linesrc + SRC_PITCH);
+                            break;
+                        case 1:
+                        case 2:
+                            INTERPOLATE_4_PIXELS_1_1_1_1(*linedst, linesrc, linesrc + 3, linesrc + SRC_PITCH, linesrc + SRC_PITCH + 3);
+                            break;
+                        case 3:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc + 3, linesrc + SRC_PITCH + 3);
+                            break;
+                    }
+
+                    xpos += xdiff;
+                    linesrc += (xpos >> 16) * 3;
+                    xpos &= 0xffff;
+
+                    linedst ++;
+                }
+                break;
+        }
+
+
+        ypos += ydiff;
+        src += (ypos >> 16) * SRC_PITCH;
+        ypos &= 0xffff;
+
+        dst = (uint16_t *) (((uintptr_t)dst) + DST_PITCH);
+    }
+
+#undef SRC_RECT_WIDTH
+#undef SRC_RECT_HEIGHT
+#undef SRC_RECT_X
+#undef SRC_RECT_Y
+#undef DST_RECT_WIDTH
+#undef DST_RECT_HEIGHT
+#undef DST_RECT_X
+#undef DST_RECT_Y
+
+#undef SRC_PITCH
+#undef DST_PITCH
+
+#undef RVAL
+#undef GVAL
+#undef BVAL
+
+#undef COPY_PIXEL
+#undef INTERPOLATE_2_PIXELS_1_1
+
+#undef INTERPOLATE_4_PIXELS_1_1_1_1
+}
+
+static void ResizeTranspImage_32(uint32_t *src, uint16_t *dst, int srcwidth, int srcheight, int srcpitch, uint32_t srckey, int dstwidth, int dstheight, int dstpitch, unsigned int dstkey)
+{
+    unsigned int dwidth, dheight, xdiff, ydiff, xpos, ypos, xstart;
+    uint32_t *linesrc;
+    uint16_t *linedst;
+
+#define SRC_RECT_WIDTH srcwidth
+#define SRC_RECT_HEIGHT srcheight
+#define SRC_RECT_X 0
+#define SRC_RECT_Y 0
+#define DST_RECT_WIDTH dstwidth
+#define DST_RECT_HEIGHT dstheight
+#define DST_RECT_X 0
+#define DST_RECT_Y 0
+
+#define SRC_PITCH srcpitch
+#define DST_PITCH dstpitch
+
+#define COPY_PIXEL(dstpix, a) { \
+        if ((a) == srckey) { \
+            dstpix = dstkey; \
+        } else { \
+            register unsigned int tmppix; \
+            tmppix = ( (((a) & 0xf8) << 8) | (((a) & 0xfc00) >> 5) | (((a) & 0xf80000) >> 19) ); \
+            dstpix = (tmppix == dstkey)?(dstkey - 1):(tmppix); \
+        } \
+    }
+
+#define INTERPOLATE_2_PIXELS_1_1(dstpix, a, b) { \
+        if ((a) == srckey) { \
+            if ((b) == srckey) { \
+                dstpix = dstkey; \
+            } else { \
+                dstpix = ( (((b) & 0xf0) << 7) | (((b) & 0xf800) >> 6) | (((b) & 0xf00000) >> 20) ); \
+            } \
+        } else if ((b) == srckey) { \
+            dstpix = ( (((a) & 0xf0) << 7) | (((a) & 0xf800) >> 6) | (((a) & 0xf00000) >> 20) ); \
+        } else { \
+            register unsigned int tmppix; \
+            tmppix = ( (((((a) & 0xff) + ((b) & 0xff)) & 0x1f0) << 7) | (((((a) & 0xff00) + ((b) & 0xff00)) & 0x1f800) >> 6) | (((((a) & 0xff0000) + ((b) & 0xff0000)) & 0x1f00000) >> 20) ); \
+            dstpix = (tmppix == dstkey)?(dstkey - 1):(tmppix); \
+        } \
+    }
+
+#define INTERPOLATE_4_PIXELS_1_1_1_1(dstpix, a, b, c, d) { \
+        register unsigned int red, green, blue, tmppix; \
+        if ((a) == srckey) { \
+            red = green = blue = 0; \
+            tmppix = 1; \
+        } else { \
+            red = (a) & 0xff; green = (a) & 0xff00; blue = (a) & 0xff0000; \
+            tmppix = 0; \
+        } \
+        if ((b) == srckey) { \
+            tmppix ++; \
+        } else { \
+            red += (b) & 0xff; green += (b) & 0xff00; blue += (b) & 0xff0000; \
+        } \
+        if ((c) == srckey) { \
+            tmppix ++; \
+        } else { \
+            red += (c) & 0xff; green += (c) & 0xff00; blue += (c) & 0xff0000; \
+        } \
+        if ((d) == srckey) { \
+            tmppix ++; \
+        } else { \
+            red += (d) & 0xff; green += (d) & 0xff00; blue += (d) & 0xff0000; \
+        } \
+        if (tmppix == 4) { \
+            dstpix = dstkey; \
+        } else { \
+            tmppix = ( ((red & 0x3e0) << 6) | ((green & 0x3f000) >> 7) | ((blue & 0x3e00000) >> 21) ); \
+            dstpix = (tmppix == dstkey)?(dstkey - 1):(tmppix); \
+        } \
+    }
+
+    src = ((uint32_t *) (((uintptr_t)src) + SRC_RECT_Y * SRC_PITCH)) + SRC_RECT_X;
+    dst = ((uint16_t *) (((uintptr_t)dst) + DST_RECT_Y * DST_PITCH)) + DST_RECT_X;
+
+    if (SRC_RECT_WIDTH <= DST_RECT_WIDTH)
+    {
+        xstart = 0;
+    }
+    else
+    {
+        xstart = 65536 - ((DST_RECT_WIDTH << 16) / SRC_RECT_WIDTH);
+    }
+
+    if (SRC_RECT_HEIGHT <= DST_RECT_HEIGHT)
+    {
+        ypos = 0;
+    }
+    else
+    {
+        ypos = 65536 - ((DST_RECT_HEIGHT << 16) / SRC_RECT_HEIGHT);
+    }
+
+    xdiff = (SRC_RECT_WIDTH << 16) / DST_RECT_WIDTH;
+    ydiff = (SRC_RECT_HEIGHT << 16) / DST_RECT_HEIGHT;
+
+
+    srckey &= 0xffffff;
+
+    for (dheight = DST_RECT_HEIGHT; dheight != 0; dheight--)
+    {
+        linesrc = src;
+        linedst = dst;
+        xpos = xstart;
+
+        switch ((ypos >> 14) & 3)
+        {
+            case 3:
+                linesrc = (uint32_t *) (((uintptr_t)src) + SRC_PITCH);
+            case 0:
+                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                {
+                    switch ((xpos >> 14) & 3)
+                    {
+                        case 0:
+                            COPY_PIXEL(*linedst, linesrc[0]);
+                            break;
+                        case 1:
+                        case 2:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], linesrc[1]);
+                            break;
+                        case 3:
+                            COPY_PIXEL(*linedst, linesrc[1]);
+                            break;
+                    }
+
+                    xpos += xdiff;
+                    linesrc += (xpos >> 16);
+                    xpos &= 0xffff;
+
+                    linedst ++;
+                }
+                break;
+            case 1:
+            case 2:
+                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                {
+                    switch ((xpos >> 14) & 3)
+                    {
+                        case 0:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[0]);
+                            break;
+                        case 1:
+                        case 2:
+                            INTERPOLATE_4_PIXELS_1_1_1_1(*linedst, linesrc[0], linesrc[1], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[0], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[1]);
+                            break;
+                        case 3:
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[1], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[1]);
+                            break;
+                    }
+
+                    xpos += xdiff;
+                    linesrc += (xpos >> 16);
+                    xpos &= 0xffff;
+
+                    linedst ++;
+                }
+                break;
+        }
+
+
+        ypos += ydiff;
+        src = (uint32_t *) (((uintptr_t)src) + (ypos >> 16) * SRC_PITCH);
+        ypos &= 0xffff;
+
+        dst = (uint16_t *) (((uintptr_t)dst) + DST_PITCH);
+    }
+
+#undef SRC_RECT_WIDTH
+#undef SRC_RECT_HEIGHT
+#undef SRC_RECT_X
+#undef SRC_RECT_Y
+#undef DST_RECT_WIDTH
+#undef DST_RECT_HEIGHT
+#undef DST_RECT_X
+#undef DST_RECT_Y
+
+#undef SRC_PITCH
+#undef DST_PITCH
+
+#undef COPY_PIXEL
+#undef INTERPOLATE_2_PIXELS_1_1
+
+#undef INTERPOLATE_4_PIXELS_1_1_1_1
+}
+
+
+
+static SDL_Surface *loadAndResizeImage(char *name, int width, int height, int transp)
+{
+	SDL_Surface *temp = IMG_Load(name);
+	SDL_Surface *image;
+    int wrongformat;
+
+	if (temp == NULL)
+	{
+		printf("Failed to load image %s\n", name);
+
+		return NULL;
+	}
+
+    if (width == 0) width = ((temp->w * TILE_WIDTH) + (TAILLE_BLOC - 1)) / TAILLE_BLOC;
+    if (height == 0) height = ((temp->h * TILE_HEIGHT) + (TAILLE_BLOC - 1)) / TAILLE_BLOC;
+
+
+	/* Convertit l'image au format de l'écran (screen) */
+
+    image = SDL_CreateRGBSurface((transp)?(SDL_HWSURFACE | SDL_SRCCOLORKEY):(SDL_HWSURFACE), width, height, ecran->format->BitsPerPixel, ecran->format->Rmask, ecran->format->Gmask, ecran->format->Bmask, ecran->format->Amask);
+	if (image == NULL)
+	{
+        SDL_FreeSurface(temp);
+		printf("Failed to convert image %s to native format\n", name);
+
+		return NULL;
+	}
+
+    SDL_LockSurface(temp);
+    SDL_LockSurface(image);
+
+    wrongformat = 1;
+    if (transp)
+    {
+        if (temp->format->BitsPerPixel == 32)
+        {
+            if (temp->format->Rmask == 0xff)
+            {
+                wrongformat = 0;
+                ResizeTranspImage_32((uint32_t *) temp->pixels, (uint16_t *) image->pixels, temp->w, temp->h, temp->pitch, SDL_MapRGB(temp->format, TRANS_R, TRANS_G, TRANS_B), width, height, image->pitch, (uint16_t) SDL_MapRGB(image->format, TRANS_R, TRANS_G, TRANS_B));
+            }
+        }
+
+        SDL_UnlockSurface(image);
+
+        /* Gestion de la transparence*/
+        SDL_SetColorKey(image, (SDL_SRCCOLORKEY|SDL_RLEACCEL), SDL_MapRGB(image->format, TRANS_R, TRANS_G, TRANS_B));
+    }
+    else
+    {
+        if (temp->format->BitsPerPixel == 32)
+        {
+            if (temp->format->Rmask == 0xff)
+            {
+                wrongformat = 0;
+                ResizeImage_32_RGB((uint32_t *) temp->pixels, (uint16_t *) image->pixels, temp->w, temp->h, temp->pitch, width, height, image->pitch);
+            }
+        }
+        else if (temp->format->BitsPerPixel == 24)
+        {
+            if (temp->format->Rmask == 0xff)
+            {
+                wrongformat = 0;
+                ResizeImage_24_RGB((uint8_t *) temp->pixels, (uint16_t *) image->pixels, temp->w, temp->h, temp->pitch, width, height, image->pitch);
+            }
+            else
+            {
+                wrongformat = 0;
+                ResizeImage_24_BGR((uint8_t *) temp->pixels, (uint16_t *) image->pixels, temp->w, temp->h, temp->pitch, width, height, image->pitch);
+            }
+        }
+
+        SDL_UnlockSurface(image);
+    }
+
+    SDL_UnlockSurface(temp);
+	SDL_FreeSurface(temp);
+
+	if (wrongformat)
+	{
+        SDL_FreeSurface(image);
+		printf("Failed to convert image %s to native format\n", name);
+
+		return NULL;
+	}
+
+	/* Retourne l'image au format de l'écran pour accélérer son blit */
+
+	return image;
 
 }
 
+#endif
 
 /* Nouvelles fonctions avril 2010 - mise à niveau */
 
 /* Charge les images pour un blit plus rapide */
 SDL_Surface *loadImage(char *name)
 {
+#ifdef GP2X
+    return loadAndResizeImage(name, 0, 0, 1);
+#else
 	/* Charge les images avec SDL Image */
 
 	SDL_Surface *temp = IMG_Load(name);
@@ -2837,9 +1900,35 @@ SDL_Surface *loadImage(char *name)
 
 	return image;
 
-
+#endif
 }
 
+SDL_Surface *loadFullScreenImage(char *name)
+{
+#ifdef GP2X
+    return loadAndResizeImage(name, 320, 240, 0);
+#else
+    return loadImage(name);
+#endif
+}
+
+SDL_Surface *loadScreenImage(char *name)
+{
+#ifdef GP2X
+    return loadAndResizeImage(name, 0, 0, 0);
+#else
+    return loadImage(name);
+#endif
+}
+
+static SDL_Surface *loadTileImage(char *name)
+{
+#ifdef GP2X
+    return loadAndResizeImage(name, TILE_WIDTH, TILE_HEIGHT, 0);
+#else
+    return loadImage(name);
+#endif
+}
 
 
 void loadTileset()
@@ -2875,67 +1964,67 @@ void loadTileset()
 
     //Chargement des tiles du 1er tileset
     //Non traversables : <= 20 pour le test de deplacement
-    mapImages[0] = loadImage(strcat(loadAdress, "B1.bmp"));
+    mapImages[0] = loadTileImage(strcat(loadAdress, "B1.bmp"));
     //on remet loadAdress a sa valeur initiale :
     strcpy(loadAdress, adressSave);
-    mapImages[1] = loadImage(strcat(loadAdress, "B2.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[2] = loadImage(strcat(loadAdress, "B3.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[3] = loadImage(strcat(loadAdress, "B4.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[4] = loadImage(strcat(loadAdress, "B5.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[5] = loadImage(strcat(loadAdress, "B6.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[6] = loadImage(strcat(loadAdress, "B7.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[7] = loadImage(strcat(loadAdress, "B8.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[8] = loadImage(strcat(loadAdress, "B9.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[9] = loadImage(strcat(loadAdress, "B10.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[10] = loadImage(strcat(loadAdress, "B11.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[11] = loadImage(strcat(loadAdress, "B12.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[12] = loadImage(strcat(loadAdress, "B13.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[13] = loadImage(strcat(loadAdress, "B14.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[14] = loadImage(strcat(loadAdress, "B15.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[15] = loadImage(strcat(loadAdress, "B16.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[16] = loadImage(strcat(loadAdress, "B17.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[17] = loadImage(strcat(loadAdress, "B18.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[18] = loadImage(strcat(loadAdress, "B19.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[19] = loadImage(strcat(loadAdress, "B20.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[1] = loadTileImage(strcat(loadAdress, "B2.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[2] = loadTileImage(strcat(loadAdress, "B3.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[3] = loadTileImage(strcat(loadAdress, "B4.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[4] = loadTileImage(strcat(loadAdress, "B5.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[5] = loadTileImage(strcat(loadAdress, "B6.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[6] = loadTileImage(strcat(loadAdress, "B7.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[7] = loadTileImage(strcat(loadAdress, "B8.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[8] = loadTileImage(strcat(loadAdress, "B9.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[9] = loadTileImage(strcat(loadAdress, "B10.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[10] = loadTileImage(strcat(loadAdress, "B11.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[11] = loadTileImage(strcat(loadAdress, "B12.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[12] = loadTileImage(strcat(loadAdress, "B13.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[13] = loadTileImage(strcat(loadAdress, "B14.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[14] = loadTileImage(strcat(loadAdress, "B15.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[15] = loadTileImage(strcat(loadAdress, "B16.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[16] = loadTileImage(strcat(loadAdress, "B17.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[17] = loadTileImage(strcat(loadAdress, "B18.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[18] = loadTileImage(strcat(loadAdress, "B19.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[19] = loadTileImage(strcat(loadAdress, "B20.bmp")); strcpy(loadAdress, adressSave);
 
     //Traversables :
-    mapImages[20] = loadImage(strcat(loadAdress, "T1.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[21] = loadImage(strcat(loadAdress, "T2.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[22] = loadImage(strcat(loadAdress, "T3.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[23] = loadImage(strcat(loadAdress, "T4.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[24] = loadImage(strcat(loadAdress, "T5.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[25] = loadImage(strcat(loadAdress, "T6.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[26] = loadImage(strcat(loadAdress, "T7.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[27] = loadImage(strcat(loadAdress, "T8.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[28] = loadImage(strcat(loadAdress, "T9.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[29] = loadImage(strcat(loadAdress, "T10.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[30] = loadImage(strcat(loadAdress, "T11.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[31] = loadImage(strcat(loadAdress, "T12.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[32] = loadImage(strcat(loadAdress, "T13.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[33] = loadImage(strcat(loadAdress, "T14.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[34] = loadImage(strcat(loadAdress, "T15.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[35] = loadImage(strcat(loadAdress, "T16.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[36] = loadImage(strcat(loadAdress, "T17.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[37] = loadImage(strcat(loadAdress, "T18.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[38] = loadImage(strcat(loadAdress, "T19.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[39] = loadImage(strcat(loadAdress, "T20.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[40] = loadImage(strcat(loadAdress, "T21.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[41] = loadImage(strcat(loadAdress, "T22.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[42] = loadImage(strcat(loadAdress, "T23.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[43] = loadImage(strcat(loadAdress, "T24.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[44] = loadImage(strcat(loadAdress, "T25.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[20] = loadTileImage(strcat(loadAdress, "T1.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[21] = loadTileImage(strcat(loadAdress, "T2.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[22] = loadTileImage(strcat(loadAdress, "T3.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[23] = loadTileImage(strcat(loadAdress, "T4.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[24] = loadTileImage(strcat(loadAdress, "T5.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[25] = loadTileImage(strcat(loadAdress, "T6.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[26] = loadTileImage(strcat(loadAdress, "T7.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[27] = loadTileImage(strcat(loadAdress, "T8.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[28] = loadTileImage(strcat(loadAdress, "T9.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[29] = loadTileImage(strcat(loadAdress, "T10.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[30] = loadTileImage(strcat(loadAdress, "T11.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[31] = loadTileImage(strcat(loadAdress, "T12.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[32] = loadTileImage(strcat(loadAdress, "T13.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[33] = loadTileImage(strcat(loadAdress, "T14.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[34] = loadTileImage(strcat(loadAdress, "T15.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[35] = loadTileImage(strcat(loadAdress, "T16.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[36] = loadTileImage(strcat(loadAdress, "T17.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[37] = loadTileImage(strcat(loadAdress, "T18.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[38] = loadTileImage(strcat(loadAdress, "T19.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[39] = loadTileImage(strcat(loadAdress, "T20.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[40] = loadTileImage(strcat(loadAdress, "T21.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[41] = loadTileImage(strcat(loadAdress, "T22.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[42] = loadTileImage(strcat(loadAdress, "T23.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[43] = loadTileImage(strcat(loadAdress, "T24.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[44] = loadTileImage(strcat(loadAdress, "T25.bmp")); strcpy(loadAdress, adressSave);
 
     //5 tiles speciales (coffres etc.. : 46 à 50) :
-    mapImages[45] = loadImage(strcat(loadAdress, "S1.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[46] = loadImage(strcat(loadAdress, "S2.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[47] = loadImage(strcat(loadAdress, "S3.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[48] = loadImage(strcat(loadAdress, "S4.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[49] = loadImage(strcat(loadAdress, "S5.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[45] = loadTileImage(strcat(loadAdress, "S1.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[46] = loadTileImage(strcat(loadAdress, "S2.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[47] = loadTileImage(strcat(loadAdress, "S3.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[48] = loadTileImage(strcat(loadAdress, "S4.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[49] = loadTileImage(strcat(loadAdress, "S5.bmp")); strcpy(loadAdress, adressSave);
 
     //3 tiles tueuses:
-    mapImages[50] = loadImage(strcat(loadAdress, "H1.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[51] = loadImage(strcat(loadAdress, "H2.bmp")); strcpy(loadAdress, adressSave);
-    mapImages[52] = loadImage(strcat(loadAdress, "H3.bmp"));
+    mapImages[50] = loadTileImage(strcat(loadAdress, "H1.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[51] = loadTileImage(strcat(loadAdress, "H2.bmp")); strcpy(loadAdress, adressSave);
+    mapImages[52] = loadTileImage(strcat(loadAdress, "H3.bmp"));
 
     //---------------------------------------------------------
 
@@ -2947,67 +2036,67 @@ void loadTileset()
 
     //Chargement des tiles du 2eme tileset
     //Non traversables : <= 20 pour le test de deplacement
-    mapImages2[0] = loadImage(strcat(loadAdress, "B1.bmp"));
+    mapImages2[0] = loadTileImage(strcat(loadAdress, "B1.bmp"));
     //on remet loadAdress a sa valeur initiale :
     strcpy(loadAdress, adressSave);
-    mapImages2[1] = loadImage(strcat(loadAdress, "B2.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[2] = loadImage(strcat(loadAdress, "B3.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[3] = loadImage(strcat(loadAdress, "B4.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[4] = loadImage(strcat(loadAdress, "B5.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[5] = loadImage(strcat(loadAdress, "B6.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[6] = loadImage(strcat(loadAdress, "B7.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[7] = loadImage(strcat(loadAdress, "B8.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[8] = loadImage(strcat(loadAdress, "B9.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[9] = loadImage(strcat(loadAdress, "B10.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[10] = loadImage(strcat(loadAdress, "B11.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[11] = loadImage(strcat(loadAdress, "B12.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[12] = loadImage(strcat(loadAdress, "B13.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[13] = loadImage(strcat(loadAdress, "B14.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[14] = loadImage(strcat(loadAdress, "B15.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[15] = loadImage(strcat(loadAdress, "B16.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[16] = loadImage(strcat(loadAdress, "B17.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[17] = loadImage(strcat(loadAdress, "B18.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[18] = loadImage(strcat(loadAdress, "B19.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[19] = loadImage(strcat(loadAdress, "B20.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[1] = loadTileImage(strcat(loadAdress, "B2.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[2] = loadTileImage(strcat(loadAdress, "B3.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[3] = loadTileImage(strcat(loadAdress, "B4.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[4] = loadTileImage(strcat(loadAdress, "B5.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[5] = loadTileImage(strcat(loadAdress, "B6.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[6] = loadTileImage(strcat(loadAdress, "B7.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[7] = loadTileImage(strcat(loadAdress, "B8.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[8] = loadTileImage(strcat(loadAdress, "B9.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[9] = loadTileImage(strcat(loadAdress, "B10.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[10] = loadTileImage(strcat(loadAdress, "B11.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[11] = loadTileImage(strcat(loadAdress, "B12.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[12] = loadTileImage(strcat(loadAdress, "B13.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[13] = loadTileImage(strcat(loadAdress, "B14.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[14] = loadTileImage(strcat(loadAdress, "B15.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[15] = loadTileImage(strcat(loadAdress, "B16.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[16] = loadTileImage(strcat(loadAdress, "B17.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[17] = loadTileImage(strcat(loadAdress, "B18.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[18] = loadTileImage(strcat(loadAdress, "B19.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[19] = loadTileImage(strcat(loadAdress, "B20.bmp")); strcpy(loadAdress, adressSave);
 
     //Traversables :
-    mapImages2[20] = loadImage(strcat(loadAdress, "T1.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[21] = loadImage(strcat(loadAdress, "T2.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[22] = loadImage(strcat(loadAdress, "T3.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[23] = loadImage(strcat(loadAdress, "T4.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[24] = loadImage(strcat(loadAdress, "T5.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[25] = loadImage(strcat(loadAdress, "T6.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[26] = loadImage(strcat(loadAdress, "T7.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[27] = loadImage(strcat(loadAdress, "T8.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[28] = loadImage(strcat(loadAdress, "T9.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[29] = loadImage(strcat(loadAdress, "T10.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[30] = loadImage(strcat(loadAdress, "T11.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[31] = loadImage(strcat(loadAdress, "T12.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[32] = loadImage(strcat(loadAdress, "T13.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[33] = loadImage(strcat(loadAdress, "T14.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[34] = loadImage(strcat(loadAdress, "T15.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[35] = loadImage(strcat(loadAdress, "T16.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[36] = loadImage(strcat(loadAdress, "T17.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[37] = loadImage(strcat(loadAdress, "T18.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[38] = loadImage(strcat(loadAdress, "T19.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[39] = loadImage(strcat(loadAdress, "T20.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[40] = loadImage(strcat(loadAdress, "T21.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[41] = loadImage(strcat(loadAdress, "T22.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[42] = loadImage(strcat(loadAdress, "T23.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[43] = loadImage(strcat(loadAdress, "T24.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[44] = loadImage(strcat(loadAdress, "T25.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[20] = loadTileImage(strcat(loadAdress, "T1.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[21] = loadTileImage(strcat(loadAdress, "T2.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[22] = loadTileImage(strcat(loadAdress, "T3.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[23] = loadTileImage(strcat(loadAdress, "T4.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[24] = loadTileImage(strcat(loadAdress, "T5.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[25] = loadTileImage(strcat(loadAdress, "T6.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[26] = loadTileImage(strcat(loadAdress, "T7.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[27] = loadTileImage(strcat(loadAdress, "T8.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[28] = loadTileImage(strcat(loadAdress, "T9.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[29] = loadTileImage(strcat(loadAdress, "T10.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[30] = loadTileImage(strcat(loadAdress, "T11.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[31] = loadTileImage(strcat(loadAdress, "T12.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[32] = loadTileImage(strcat(loadAdress, "T13.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[33] = loadTileImage(strcat(loadAdress, "T14.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[34] = loadTileImage(strcat(loadAdress, "T15.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[35] = loadTileImage(strcat(loadAdress, "T16.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[36] = loadTileImage(strcat(loadAdress, "T17.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[37] = loadTileImage(strcat(loadAdress, "T18.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[38] = loadTileImage(strcat(loadAdress, "T19.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[39] = loadTileImage(strcat(loadAdress, "T20.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[40] = loadTileImage(strcat(loadAdress, "T21.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[41] = loadTileImage(strcat(loadAdress, "T22.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[42] = loadTileImage(strcat(loadAdress, "T23.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[43] = loadTileImage(strcat(loadAdress, "T24.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[44] = loadTileImage(strcat(loadAdress, "T25.bmp")); strcpy(loadAdress, adressSave);
 
     //5 tiles speciales (coffres etc.. : 46 à 50) :
-    mapImages2[45] = loadImage(strcat(loadAdress, "S1.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[46] = loadImage(strcat(loadAdress, "S2.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[47] = loadImage(strcat(loadAdress, "S3.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[48] = loadImage(strcat(loadAdress, "S4.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[49] = loadImage(strcat(loadAdress, "S5.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[45] = loadTileImage(strcat(loadAdress, "S1.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[46] = loadTileImage(strcat(loadAdress, "S2.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[47] = loadTileImage(strcat(loadAdress, "S3.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[48] = loadTileImage(strcat(loadAdress, "S4.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[49] = loadTileImage(strcat(loadAdress, "S5.bmp")); strcpy(loadAdress, adressSave);
 
     //3 tiles tueuses:
-    mapImages2[50] = loadImage(strcat(loadAdress, "H1.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[51] = loadImage(strcat(loadAdress, "H2.bmp")); strcpy(loadAdress, adressSave);
-    mapImages2[52] = loadImage(strcat(loadAdress, "H3.bmp"));
+    mapImages2[50] = loadTileImage(strcat(loadAdress, "H1.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[51] = loadTileImage(strcat(loadAdress, "H2.bmp")); strcpy(loadAdress, adressSave);
+    mapImages2[52] = loadTileImage(strcat(loadAdress, "H3.bmp"));
 
 }
 
@@ -3027,20 +2116,19 @@ void freeTileset()
 }
 
 
-void pause(void)
+int pauseGame(void)
 {
 
     unsigned int frameLimit = SDL_GetTicks() + 16;
-    int go = 1;
     int timer = SDL_GetTicks();
     char text[70];
 
     sprintf(text, "** PAUSE **");
     drawString(text, 165, 200, police);
-    SDL_Flip( ecran );
+    FlipScreen();
     pauseSong();
 
-    while (go)
+    while (1)
     {
 
 
@@ -3051,12 +2139,12 @@ void pause(void)
 
         if ( timer + 500 < SDL_GetTicks() )
         {
-            if (input.enter)
+            if (input.quit || input.enter || input.escape)
                 {
-                    input.enter = input.pause = 0;
+                    input.enter = input.pause = input.escape = 0;
                     input.timer = SDL_GetTicks();
-                    pauseSong();
-                    go = 0;
+                    if (!input.quit) pauseSong();
+                    return (input.quit)?0:1;
                 }
 
         }
@@ -3126,7 +2214,7 @@ void drawString(char *text, int x, int y, TTF_Font *font)
 	dest.w = surface->w;
 	dest.h = surface->h;
 
-	SDL_BlitSurface(surface, NULL, ecran, &dest);
+	BlitSprite(surface, ecran, &dest);
 
 	/* Free the generated string image */
 
@@ -3149,6 +2237,9 @@ void getInput()
 			** The arrow keys will scroll the map around
 			*/
 
+            case SDL_QUIT:
+                input.quit = 1;
+                return;
 
 			case SDL_KEYDOWN:
 				switch (event.key.keysym.sym)
@@ -3191,9 +2282,13 @@ void getInput()
 
 
 					case SDLK_RETURN:
+                    case SDLK_KP_ENTER:
 						input.enter = 1;
 					break;
 
+                    case SDLK_ESCAPE:
+                        input.escape = 1;
+                        break;
 
 					default:
 					break;
@@ -3239,8 +2334,13 @@ void getInput()
 					break;
 
 					case SDLK_RETURN:
+                    case SDLK_KP_ENTER:
 						input.enter = 0;
 					break;
+
+                    case SDLK_ESCAPE:
+                        input.escape = 0;
+                        break;
 
 					default:
 					break;
@@ -3264,7 +2364,13 @@ void getJoystick()
 	{
 
 
-			if ( event.type == SDL_KEYDOWN )
+			if ( event.type == SDL_QUIT )
+            {
+                input.quit = 1;
+                return;
+            }
+
+			else if ( event.type == SDL_KEYDOWN )
 			{
 				switch (event.key.keysym.sym)
 				{
@@ -3290,8 +2396,13 @@ void getJoystick()
 
 
 					case SDLK_RETURN:
+                    case SDLK_KP_ENTER:
 						input.enter = 1;
 					break;
+
+                    case SDLK_ESCAPE:
+                        input.escape = 1;
+                        break;
 
 					default:
 					break;
@@ -3347,15 +2458,21 @@ void getJoystick()
 }
 
 
-void loadSong( char filename[200] )
+void loadSong( int songnum )
 {
+    char ch1[30] = "sons/musique";
+    char ch2[10] = "";
+#ifdef GP2X
+    sprintf (ch2, "%d.oga", songnum);
+#else
+    sprintf (ch2, "%d.mp3", songnum);
+#endif
 
  /* On libère la chanson précédente s'il y en a une */
- if ( musiqueJouee != NULL )
-    FSOUND_Stream_Close(musiqueJouee);
+ freeMusic();
 
  /* On charge la nouvelle chanson */
- musiqueJouee = FSOUND_Stream_Open( filename , FSOUND_LOOP_NORMAL, 0, 0);
+ musiqueJouee = Mix_LoadMUS( strcat(ch1, ch2) );
  if (musiqueJouee == NULL)
     {
         fprintf(stderr, "Can't read the music \n");
@@ -3363,19 +2480,17 @@ void loadSong( char filename[200] )
     }
 
  /* On active la répétition de la musique à l'infini et on la joue */
- FSOUND_Stream_SetLoopCount(musiqueJouee, -1);
- FSOUND_Stream_Play(1, musiqueJouee);
-
+ Mix_PlayMusic(musiqueJouee, -1);
 }
 
 
 void pauseSong (void)
 {
 
-  if (FSOUND_GetPaused(1))
-    FSOUND_SetPaused(1, 0);
+  if (Mix_PausedMusic())
+    Mix_ResumeMusic();
   else
-    FSOUND_SetPaused(1, 1);
+    Mix_PauseMusic();
 
 }
 
@@ -3385,7 +2500,11 @@ void freeMusic(void)
 
  /* On libère la chanson */
  if ( musiqueJouee != NULL )
-    FSOUND_Stream_Close(musiqueJouee);
+ {
+    Mix_HaltMusic();
+    Mix_FreeMusic(musiqueJouee);
+    musiqueJouee = NULL;
+ }
 
 }
 

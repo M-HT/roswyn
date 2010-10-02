@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
-#include <SDL.h>
-#include <SDL_image.h>
-#include <SDL_ttf.h>
-#include <fmod.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#include <SDL/SDL_ttf.h>
+#include <SDL/SDL_mixer.h>
 #include "constantes.h"
 #include "fichiers.h"
 #include "jeu.h"
@@ -76,21 +76,49 @@
     TTF_Font *police = NULL;
     SDL_Surface *ecran = NULL;
 
-    FSOUND_STREAM *musiqueJouee = NULL;
+    Mix_Music *musiqueJouee = NULL;
+
+    int orig_width = LARGEUR_FENETRE, orig_height = HAUTEUR_FENETRE;
 
 
+SDL_Rect position;
+SDL_Rect positionPluie;
+int carte  [NB_BLOCS_LARGEUR][NB_BLOCS_HAUTEUR]; // Carte du level 12 *12
+int level = 1;
+SDL_Surface *ennemi1Actuel, *ennemi2Actuel, *ennemi3Actuel, *ennemi4Actuel, *ennemi5Actuel;
+SDL_Surface *pnj1Actuel, *pnj2Actuel;
+SDL_Surface *fireballActuel, *tempsActuel, *marioActuel;
+
+void DrawScreen1(void)
+{
+    AfficheNiveau(position, ecran, carte, level);
+    if (ennemi1vivant == 1) { BlitSprite(ennemi1Actuel, ecran, &positionEnnemi1); }
+    if (ennemi2vivant == 1) { BlitSprite(ennemi2Actuel, ecran, &positionEnnemi2); }
+    if (ennemi3vivant == 1) { BlitSprite(ennemi3Actuel, ecran, &positionEnnemi3); }
+    if (ennemi4vivant == 1) { BlitSprite(ennemi4Actuel, ecran, &positionEnnemi4); }
+    if (ennemi5vivant == 1) { BlitSprite(ennemi5Actuel, ecran, &positionEnnemi5); }
+    if (pnj1vivant == 1) { BlitSprite(pnj1Actuel, ecran, &positionPnj1); }
+    if (pnj2vivant == 1) { BlitSprite(pnj2Actuel, ecran, &positionPnj2); }
+    if (nbfireballs >= 1) { BlitSprite(fireballActuel, ecran, &positionFireball1); }
+    if (nbfireballs >= 2) { BlitSprite(fireballActuel, ecran, &positionFireball2); }
+    if (nbfireballs >= 3) { BlitSprite(fireballActuel, ecran, &positionFireball3); }
+    if (nbfireballs >= 4) { BlitSprite(fireballActuel, ecran, &positionFireball4); }
+    if ( weather >= 1 ) BlitSprite(tempsActuel, ecran, &positionPluie);
+    BlitSprite(marioActuel, ecran, &positionMario); /* On place mario à sa nouvelle position */
+    FlipScreen(); /* On met à jour l'affichage */
+}
 
 
 int main(int argc, char *argv[])
 {
+//23 dec 09 : on initialise les joysticks
+    SDL_Init( SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_AUDIO );
+
     srand(time(NULL));
-    SDL_Surface *mario[16] = {NULL}, *marioActuel = NULL, *fond = NULL, *coeurRouge = NULL;
+    SDL_Surface *mario[16] = {NULL}, *fond = NULL, *coeurRouge = NULL;
     SDL_Event event;
     Uint8 *keystate = SDL_GetKeyState(NULL);
     int continuer = 1, i = 0, j = 0;
-    int carte  [NB_BLOCS_LARGEUR][NB_BLOCS_HAUTEUR] = { 0 }; // Carte du level 12 *12
-    SDL_Rect position;
-    int level = 1;
     int baton = 0, baton_used = 0, direction_baton = 0;
     SDL_Rect savePositionBaton;
     SDL_Surface *baton_img = NULL;
@@ -100,7 +128,7 @@ int main(int argc, char *argv[])
     int tempsSante = SDL_GetTicks();
     tilesetPrecedent = 0;
 
-    input.down = input.right = input.left = input.up = input.erase = input.enter = 0;
+    memset(&input, 0, sizeof(input));
 
     //Pour avoir 60 fps
     int fpstime = SDL_GetTicks() + 16;
@@ -114,31 +142,31 @@ int main(int argc, char *argv[])
     int tempsennemi1 = SDL_GetTicks();
     int ennemi1freeze = 0, ennemi1freeze2 = 0;
     int animEnnemi1 = 1;
-    SDL_Surface *ennemi1[8] = {NULL}, *ennemi1Actuel = NULL; //tableau d'anims
+    SDL_Surface *ennemi1[8] = {NULL}; //tableau d'anims
     //Ennemi 2
     int tempsennemi2 = SDL_GetTicks();
     int tempsBougeEnnemi2 = SDL_GetTicks();
     int ennemi2freeze = 0, ennemi2freeze2 = 0;
     int animEnnemi2 = 1;
-    SDL_Surface *ennemi2[8] = {NULL}, *ennemi2Actuel = NULL;
+    SDL_Surface *ennemi2[8] = {NULL};
     //Ennemi 3
     int tempsennemi3 = SDL_GetTicks();
     int tempsBougeEnnemi3 = SDL_GetTicks();
     int ennemi3freeze = 0, ennemi3freeze2 = 0;
     int animEnnemi3 = 1;
-    SDL_Surface *ennemi3[8] = {NULL}, *ennemi3Actuel = NULL;
+    SDL_Surface *ennemi3[8] = {NULL};
     //Ennemi 4
     int tempsennemi4 = SDL_GetTicks();
     int tempsBougeEnnemi4 = SDL_GetTicks();
     int ennemi4freeze = 0, ennemi4freeze2 = 0;
     int animEnnemi4 = 1;
-    SDL_Surface *ennemi4[8] = {NULL}, *ennemi4Actuel = NULL;
+    SDL_Surface *ennemi4[8] = {NULL};
     //Ennemi 5
     int tempsennemi5 = SDL_GetTicks();
     int tempsBougeEnnemi5 = SDL_GetTicks();
     int ennemi5freeze = 0, ennemi5freeze2 = 0;
     int animEnnemi5 = 1;
-    SDL_Surface *ennemi5[8] = {NULL}, *ennemi5Actuel = NULL;
+    SDL_Surface *ennemi5[8] = {NULL};
     //BOSS
     int tempsboss = SDL_GetTicks();
     int tempsBougeBoss = SDL_GetTicks();
@@ -162,15 +190,15 @@ int main(int argc, char *argv[])
     SDL_Rect savePositionFireball2;
     SDL_Rect savePositionFireball3;
     SDL_Rect savePositionFireball4;
-    SDL_Surface *fireball[2] = {NULL}, *fireballActuel = NULL;
+    SDL_Surface *fireball[2] = {NULL};
 
     //PNJ1 & 2
     int tempsBougePnj1 = SDL_GetTicks();
    // int tempsBougePnj2 = SDL_GetTicks();
     int animPnj1 = 1;
-    SDL_Surface *pnj1[8] = {NULL}, *pnj1Actuel = NULL;
+    SDL_Surface *pnj1[8] = {NULL};
    // int animPnj2 = 1;
-    SDL_Surface *pnj2 = NULL, *pnj2Actuel = NULL;
+    SDL_Surface *pnj2 = NULL;
 
     int x, y; // pour tester la collision
     int coeur = 5; // nombre de coeurs de vie avant la mort
@@ -188,7 +216,7 @@ int main(int argc, char *argv[])
 
     // Génération du nombre aléatoire
     const int MAX = 4, MIN = 1;
-    int direction, direction2, direction3, direction4;
+    int direction = 0, direction2 = 0, direction3 = 0, direction4 = 0;
     srand(time(NULL));
    // ensuite, utiliser : direction = (rand() % (MAX - MIN + 1)) + MIN;
 
@@ -199,32 +227,45 @@ int main(int argc, char *argv[])
     InitSwitchs();
 
     /* Initialisation de FMOD */
-    FSOUND_Init(44100, 32, 0);
+#ifdef GP2X
+    //Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 2048);
+    Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 1, 1024);
+#else
+    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096);
+#endif
+    Mix_AllocateChannels(16);
+#if SDL_VERSIONNUM(SDL_MIXER_MAJOR_VERSION, SDL_MIXER_MINOR_VERSION, SDL_MIXER_PATCHLEVEL) >= SDL_VERSIONNUM(1, 2, 10)
+    #ifdef GP2X
+        Mix_Init(MIX_INIT_OGG);
+    #else
+        Mix_Init(MIX_INIT_MP3);
+    #endif
+#endif
 
     //Pour le son
     //Epee quand on frappe
-    FSOUND_SAMPLE *sword = NULL, *ah = NULL, *hurt = NULL, *ehit = NULL, *ekill = NULL, *LowHealth = NULL, *item_sound = NULL, *fanfare = NULL;
-    FSOUND_SAMPLE *dragonstart = NULL, *dragonhit = NULL, *dragondies = NULL, *rain = NULL, *potion_sound = NULL, *destroy = NULL;
+    Mix_Chunk *sword = NULL, *ah = NULL, *hurt = NULL, *ehit = NULL, *ekill = NULL, *LowHealth = NULL, *item_sound = NULL, *fanfare = NULL;
+    Mix_Chunk *dragonstart = NULL, *dragonhit = NULL, *dragondies = NULL, *rain = NULL, *potion_sound = NULL, *destroy = NULL;
     int epee = 1, epee2 = 1;
 
     /* Chargement des sons */
-    sword = FSOUND_Sample_Load(FSOUND_FREE, "sons/sword.wav", 0, 0, 0);
-    ah = FSOUND_Sample_Load(FSOUND_FREE, "sons/ah.wav", 0, 0, 0);
-    hurt = FSOUND_Sample_Load(FSOUND_FREE, "sons/hurt.wav", 0, 0, 0);
-    ehit = FSOUND_Sample_Load(FSOUND_FREE, "sons/ehit.wav", 0, 0, 0);
-    ekill = FSOUND_Sample_Load(FSOUND_FREE, "sons/ekill.wav", 0, 0, 0);
-    LowHealth = FSOUND_Sample_Load(FSOUND_FREE, "sons/LowHealth.wav", 0, 0, 0);
-    item_sound = FSOUND_Sample_Load(FSOUND_FREE, "sons/item.wav", 0, 0, 0);
-    fanfare = FSOUND_Sample_Load(FSOUND_FREE, "sons/fanfare.wav", 0, 0, 0);
-    dragonstart = FSOUND_Sample_Load(FSOUND_FREE, "sons/dragonstart.wav", 0, 0, 0);
-    dragonhit = FSOUND_Sample_Load(FSOUND_FREE, "sons/dragonhit.wav", 0, 0, 0);
-    dragondies = FSOUND_Sample_Load(FSOUND_FREE, "sons/dragondies.wav", 0, 0, 0);
-    rain = FSOUND_Sample_Load(FSOUND_FREE, "sons/rain2.wav", 0, 0, 0);
-    potion_sound = FSOUND_Sample_Load(FSOUND_FREE, "sons/potion.wav", 0, 0, 0);
-    destroy = FSOUND_Sample_Load(FSOUND_FREE, "sons/destroy.wav", 0, 0, 0);
+    sword        = Mix_LoadWAV("sons/sword.wav");
+    ah           = Mix_LoadWAV("sons/ah.wav");
+    hurt         = Mix_LoadWAV("sons/hurt.wav");
+    ehit         = Mix_LoadWAV("sons/ehit.wav");
+    ekill        = Mix_LoadWAV("sons/ekill.wav");
+    LowHealth    = Mix_LoadWAV("sons/LowHealth.wav");
+    item_sound   = Mix_LoadWAV("sons/item.wav");
+    fanfare      = Mix_LoadWAV("sons/fanfare.wav");
+    dragonstart  = Mix_LoadWAV("sons/dragonstart.wav");
+    dragonhit    = Mix_LoadWAV("sons/dragonhit.wav");
+    dragondies   = Mix_LoadWAV("sons/dragondies.wav");
+    rain         = Mix_LoadWAV("sons/rain2.wav");
+    potion_sound = Mix_LoadWAV("sons/potion.wav");
+    destroy      = Mix_LoadWAV("sons/destroy.wav");
 
      //Musiques
-    loadSong("sons/musique0.mp3");
+    loadSong(0);
 
 
     // Gestion du texte
@@ -232,11 +273,8 @@ int main(int argc, char *argv[])
 //    SDL_Color couleurBlanche = {255, 255, 255};
     TTF_Init();
     /* Chargement de la police */
-    police = TTF_OpenFont("police.ttf", 14);
+    police = TTF_OpenFont("police.ttf", TEXT_SIZE);
 
-
-//23 dec 09 : on initialise les joysticks
-    SDL_Init( SDL_INIT_VIDEO | SDL_INIT_JOYSTICK );
 
     SDL_WM_SetIcon(IMG_Load("B20.bmp"), NULL); // L'icône doit être chargée avant SDL_SetVideoMode
 
@@ -255,10 +293,18 @@ int main(int argc, char *argv[])
 
 
     //Gestion du profil et du plein ecran
-    int video = 1;   //Mode video : 1 = plein ecran, 2 = fenetre
+    int video = 2;   //Mode video : 1 = plein ecran, 2 = fenetre
     int profil = 1;  // Profil : 1 = normal, 2 = netbooks
     int KR = 10;
 
+#ifdef GP2X
+    KR = 10;
+    ecran = SDL_SetVideoMode(320, 240, 16, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN | SDL_NOFRAME );
+    //ecran = SDL_SetVideoMode(320, 240, 16, SDL_SWSURFACE );
+#elif defined(PANDORA)
+    KR = 10;
+    ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN | SDL_NOFRAME );
+#else
     if (profil == 1) {  KR = 10;
      if ( video == 1) {
         ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN ); }
@@ -271,7 +317,7 @@ int main(int argc, char *argv[])
      else if ( video == 2) {
         ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_SWSURFACE | SDL_DOUBLEBUF ); }
     }
-
+#endif
 
     SDL_WM_SetCaption("Roswyn and The Dragons by Jeremie F. BELLANGER", NULL);
 
@@ -299,8 +345,8 @@ int main(int argc, char *argv[])
         baton_img = loadImage("objets/fireballC2.png");
 
     /* On centre mario à l'écran */
-        positionMario.x = ecran->w / 2 - 35 / 2;
-        positionMario.y = ecran->h / 2 - 35 / 2;
+        positionMario.x = orig_width / 2 - 35 / 2;
+        positionMario.y = orig_height / 2 - 35 / 2;
 
 
             //Chargement des items
@@ -323,14 +369,13 @@ int main(int argc, char *argv[])
 
 
             //Chargement de la pluie, orage
-        SDL_Surface *temps[4] = {NULL}, *tempsActuel = NULL, *orage = NULL;
+        SDL_Surface *temps[4] = {NULL}, *orage = NULL;
         temps[0] = loadImage("tiles/temps/pluie1.png");
         temps[1] = loadImage("tiles/temps/pluie2.png");
         temps[2] = loadImage("tiles/temps/pluie3.png");
         temps[3] = loadImage("tiles/temps/pluie4.png");
         tempsActuel = temps[0];
         orage = loadImage("tiles/temps/orage.png");
-        SDL_Rect positionPluie;
         positionPluie.x = 0;
         positionPluie.y = 0;
         int tempsPluie = SDL_GetTicks();
@@ -396,8 +441,8 @@ int main(int argc, char *argv[])
         ennemi5[DROITE2] = loadImage("sprites1/monster5_droite2.png");
         ennemi5Actuel = ennemi5[BAS];
         //BOSS
-        bossPic[HAUT] = IMG_Load("sprites1/boss1A.png");
-        bossPic[BAS] = IMG_Load("sprites1/boss1B.png");
+        bossPic[HAUT] = loadImage("sprites1/boss1A.png");
+        bossPic[BAS] = loadImage("sprites1/boss1B.png");
         bossActuel = bossPic[BAS];
         //Fireball Boule de feu
         fireball[HAUT] = loadImage("objets/fireballA1.png");
@@ -421,7 +466,7 @@ int main(int argc, char *argv[])
     SDL_ShowCursor(SDL_DISABLE);
 
     //Ecran titre
-    title ( ecran, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
+    continuer = title ( ecran, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
 
     // Chargement du niveau
     if (!chargerNiveau(carte, level))
@@ -431,7 +476,7 @@ int main(int argc, char *argv[])
 
 
     // Affichage du fond (vie, etc...)
-    fond = loadImage("fond/barre_vie.png");
+    fond = loadScreenImage("fond/barre_vie.png");
     coeurRouge = loadImage("fond/coeur.png");
     SDL_Rect positionCoeur;
     SDL_Rect positionFond;
@@ -450,11 +495,7 @@ int main(int argc, char *argv[])
             //Gestion des changements de musique
 
             if ( musiquedavant != musique) {
-                freeMusic();
-                char ch1[30] = "sons/musique";
-                char ch2[10] = "";
-                sprintf (ch2, "%d.mp3", musique);
-                loadSong(strcat(ch1, ch2));
+                loadSong(musique);
                 musiquedavant = musique; }
 
 
@@ -523,8 +564,11 @@ int main(int argc, char *argv[])
             if (tempsboss + 300 < SDL_GetTicks()) bossfreeze = bossfreeze2 = 0;
 
 
+            int arrow_pressed, space_pressed, space_keydown;
 
-            SDL_PollEvent(&event);
+            arrow_pressed = space_pressed = space_keydown = 0;
+
+            if(SDL_PollEvent(&event))
 
             /* On teste l'input du joueur */
             switch(event.type)
@@ -539,388 +583,28 @@ int main(int argc, char *argv[])
                     switch(event.key.keysym.sym)
                         {
                         case SDLK_UP: // Flèche haut anim complete : on teste les 2 tiles contre lesquels se trouve le perso et on met a jour l'animation selon la valeur d' animMario
-                            if (keystate[SDLK_SPACE]) {
-                                if ( animMarioEpee == 1) { marioActuel = mario[EPEEHAUT]; }
-                                else { marioActuel = mario[EPEEHAUT2]; }
-                                animMario = 3;
-                                if (positionMario.y <= 1) {
-                                // on warpe si warpGauche == le nombre d'un level, sinon 0
-                                if (warpHaut != 0) { level = warpHaut; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 380; baton_used = 0; }
-                                 break; }
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] <= 20)  break;
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] <= 20)  break;
-                                //Gestion des tiles HIT
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                //Gestion des cases speciales (coffres...)
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  break;
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  break;
-
-                                else positionMario.y -= 2; break;
-                                    }
-
-                            else if (positionMario.y <= 1) {
-                                // on warpe si warpHaut == le nombre d'un level, sinon 0
-                                if (warpHaut != 0) { level = warpHaut; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 380; baton_used = 0; }
-                                if (animMario == 1) { marioActuel = mario[HAUT]; } else  marioActuel = mario[HAUT2];  break;  }
-
-                            if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] <= 20) { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
-                            if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] <= 20) { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
-                            //Gestion des tiles HIT
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
-                                    {   if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
-                                    {   if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                            //Gestion des cases speciales (coffres...)
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 46) { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
-
-                            else positionMario.y -= 2;
-                            if (animMario == 1) { marioActuel = mario[HAUT]; } else { marioActuel = mario[HAUT2]; }
+                            arrow_pressed = 1;
+                            if (keystate[SDLK_SPACE]) space_pressed = 1;
                             break;
 
                         case SDLK_DOWN: // Flèche bas anim idem
-                            if (keystate[SDLK_SPACE]) {
-                                if ( animMarioEpee == 1) { marioActuel = mario[EPEEBAS]; }
-                                else { marioActuel = mario[EPEEBAS2]; }
-                                animMario = 3;
-                                if (positionMario.y >= ecran->h - 80) {
-                                // on warpe si warpGauche == le nombre d'un level, sinon 0
-                                if (warpBas != 0) { level = warpBas; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 0; baton_used = 0; }
-                                 break; }
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20)  break;
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20)  break;
-                                //Gestion des tiles HIT
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                //Gestion des cases speciales (coffres...)
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  break;
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  break;
-
-                                else positionMario.y += 2; break;
-                                    }
-
-                            else if (positionMario.y >= ecran->h - 80) {
-                                 // on warpe si warpHaut == le nombre d'un level, sinon 0
-                                if (warpBas != 0) { level = warpBas; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 0; baton_used = 0; }
-                                if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
-
-                            if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
-                            if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
-                            //Gestion des tiles HIT
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                            //Gestion des cases speciales (coffres...)
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
-
-                            else positionMario.y += 2;
-                            if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2];
+                            arrow_pressed = 2;
+                            if (keystate[SDLK_SPACE]) space_pressed = 1;
                             break;
 
                         case SDLK_RIGHT: // Flèche droite anim idem
-                            if (keystate[SDLK_SPACE]) {
-                                if ( animMarioEpee == 1) { marioActuel = mario[EPEEDROITE]; }
-                                else { marioActuel = mario[EPEEDROITE2]; }
-                                animMario = 3;
-                                if (positionMario.x >= ecran->w - 40) {
-                                // on warpe si warpGauche == le nombre d'un level, sinon 0
-                                if (warpDroite != 0) { level = warpDroite; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 0; baton_used = 0;
-                                  } break; }
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] <= 20)  break;
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] <= 20)  break;
-                                //Gestion des tiles HIT
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                //Gestion des cases speciales (coffres...)
-                                    if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 46)  break;
-                                    if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 46)  break;
-
-                                else positionMario.x += 2; break;
-                                    }
-
-                            else if (positionMario.x >= ecran->w - 40) {
-                            // on warpe si warpDroite == le nombre d'un level, sinon 0
-                                if (warpDroite != 0) { level = warpDroite; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 0; baton_used = 0; }
-                                if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
-
-                            if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] <= 20) { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
-                            if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
-                            //Gestion des tiles HIT
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                            //Gestion des cases speciales (coffres...)
-                                    if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 46)  { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
-                                    if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
-
-                            else positionMario.x += 2;
-                            if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2];
+                            arrow_pressed = 3;
+                            if (keystate[SDLK_SPACE]) space_pressed = 1;
                             break;
 
                         case SDLK_LEFT: // Flèche gauche anim idem
-                            if (keystate[SDLK_SPACE]) {
-                                if ( animMarioEpee == 1) { marioActuel = mario[EPEEGAUCHE]; }
-                                else { marioActuel = mario[EPEEGAUCHE2]; }
-                                animMario = 3;
-                                if (positionMario.x <= 1) {
-                                // on warpe si warpGauche == le nombre d'un level, sinon 0
-                                if (warpGauche != 0) { level = warpGauche; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 380; baton_used = 0;
-                                  } break; }
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] <= 20)  break;
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] <= 20)  break;
-                                //Gestion des tiles HIT
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                //Gestion des cases speciales (coffres...)
-                                    if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 46)  break;
-                                    if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 46)  break;
-
-                                else positionMario.x -= 2; break;
-                                    }
-
-                            else if (positionMario.x <= 1) {
-                                // on warpe si warpGauche == le nombre d'un level, sinon 0
-                                if (warpGauche != 0) { level = warpGauche; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 380; baton_used = 0; }
-                                if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
-                            if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] <= 20) { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
-                            if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
-                            //Gestion des tiles HIT
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                            //Gestion des cases speciales (coffres...)
-                                    if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 46)  { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
-                                    if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
-
-                            else positionMario.x -= 2;
-                            if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2];
+                            arrow_pressed = 4;
+                            if (keystate[SDLK_SPACE]) space_pressed = 1;
                             break;
 
                         //Attaque avec spacebar pendant la duree tempsAnim, on met animMario à 3
                         case SDLK_SPACE:
-                            if (marioActuel == mario[BAS]) { marioActuel = mario[EPEEBAS]; animMario = 3; }
-                            if (marioActuel == mario[HAUT]) { marioActuel = mario[EPEEHAUT]; animMario = 3; }
-                            if (marioActuel == mario[DROITE]) { marioActuel = mario[EPEEDROITE]; animMario = 3; }
-                            if (marioActuel == mario[GAUCHE]) { marioActuel = mario[EPEEGAUCHE]; animMario = 3; }
-                            if (marioActuel == mario[BAS2]) { marioActuel = mario[EPEEBAS2]; animMario = 3; }
-                            if (marioActuel == mario[HAUT2]) { marioActuel = mario[EPEEHAUT2]; animMario = 3; }
-                            if (marioActuel == mario[DROITE2]) { marioActuel = mario[EPEEDROITE2]; animMario = 3; }
-                            if (marioActuel == mario[GAUCHE2]) { marioActuel = mario[EPEEGAUCHE2]; animMario = 3; }
-
-                            //Test Epee Nv 3.  Rochers
-                            if ( power > 2 ) {
-                                if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                                    { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 49)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 49)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                                    { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 49)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 49)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                            } //Fin
-
-                            //Test epee puissance 2 - potiches
-                            if ( power > 1 ) {
-                                if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                                    { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 50)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 50)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                                    { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 50)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 50)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                            } //Fin
-
-                            //Test Coffres
-
-                                if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                    }
-                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                    }
-                                if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                                    { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                      if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                    }
-                                if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                                    { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                      if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                    }
-
-                                //Ouverture du coffre
-                                if (open == 1) {
-                                    switch (coffre) {
-                                        case 0 :
-                                        money += 50;
-                                        AfficheDialogues (ecran, police, 995);
-                                        open = 0;
-                                        break;
-
-                                        case 1 :
-                                        money += 100;
-                                        AfficheDialogues (ecran, police, 994);
-                                        open = 0;
-                                        break;
-
-                                        case 2 :
-                                        money += 200;
-                                        AfficheDialogues (ecran, police, 993);
-                                        open = 0;
-                                        break;
-
-                                        case 3 :
-                                        potion++;
-                                        AfficheDialogues (ecran, police, 992);
-                                        open = 0;
-                                        break;
-
-                                        case 4 :
-                                        potion += 2;
-                                        AfficheDialogues (ecran, police, 991);
-                                        open = 0;
-                                        break;
-
-                                        case 5 :
-                                        key++;
-                                        AfficheDialogues (ecran, police, 990);
-                                        open = 0;
-                                        break;
-
-                                        case 6 :
-                                        coeur=++coeurmax;
-                                        AfficheDialogues (ecran, police, 989);
-                                        open = 0;
-                                        break;
-                                    }
-                                }
-
-
-                            //Test Switchs
-
-                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 48 || carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 48  )
-                                         { if ( ValeurSwitch(lswitch) == 1) { if (key > 0) { OuvreSwitch();
-                                        FSOUND_PlaySound(FSOUND_FREE, fanfare); if ( ValeurSwitch(lswitch) == 0) key--; break; }  } }
-                                    }
-
-
-                            //Test baton de feu
-
-                                if ( baton == 1 ) //Si on a le baton de feu
-                                {
-                                    if ( baton_used == 0) // Si on ne l'a pas utilisé
-                                    {  //Suivant la direction de Roswyn ( Mario ? ;)
-                                        if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                                        {
-                                            direction_baton = HAUT;
-                                            PositionBaton.x = positionMario.x + 7;
-                                            PositionBaton.y = positionMario.y + 7;
-                                        }
-
-                                        if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                                        {
-                                            direction_baton = BAS;
-                                            PositionBaton.x = positionMario.x + 7;
-                                            PositionBaton.y = positionMario.y + 35;
-                                        }
-
-                                        if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                                        {
-                                            direction_baton = DROITE;
-                                            PositionBaton.x = positionMario.x + 35;
-                                            PositionBaton.y = positionMario.y + 7;
-                                        }
-
-                                        if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                                        {
-                                            direction_baton = GAUCHE;
-                                            PositionBaton.x = positionMario.x + 7;
-                                            PositionBaton.y = positionMario.y + 7;
-                                        }
-
-                                        baton_used = 1;
-                                    }
-                                }
+                            space_keydown = 1;
                             break;
 
                         case SDLK_RETURN:
@@ -939,6 +623,7 @@ int main(int argc, char *argv[])
                             continuer = 0;
                             break;
 
+#if !defined(GP2X) && !defined(PANDORA)
                         case SDLK_F1: // Gestion du mode video : plein ecran ou fenetre
                             if ( video == 1 ) video = 2 ;
                             else video = 1 ;
@@ -975,6 +660,7 @@ int main(int argc, char *argv[])
                                 ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_SWSURFACE | SDL_DOUBLEBUF ); }
                                 }
                             break;
+#endif
 
                         default:
                             break;
@@ -1014,191 +700,7 @@ int main(int argc, char *argv[])
                     { case SDL_JOYBUTTONDOWN:
                     if ( event.jbutton.button == 0 ) /* Touche A équivalent de SPACEBAR */
                     {
-                    if (marioActuel == mario[BAS]) { marioActuel = mario[EPEEBAS]; animMario = 3; }
-                            if (marioActuel == mario[HAUT]) { marioActuel = mario[EPEEHAUT]; animMario = 3; }
-                            if (marioActuel == mario[DROITE]) { marioActuel = mario[EPEEDROITE]; animMario = 3; }
-                            if (marioActuel == mario[GAUCHE]) { marioActuel = mario[EPEEGAUCHE]; animMario = 3; }
-                            if (marioActuel == mario[BAS2]) { marioActuel = mario[EPEEBAS2]; animMario = 3; }
-                            if (marioActuel == mario[HAUT2]) { marioActuel = mario[EPEEHAUT2]; animMario = 3; }
-                            if (marioActuel == mario[DROITE2]) { marioActuel = mario[EPEEDROITE2]; animMario = 3; }
-                            if (marioActuel == mario[GAUCHE2]) { marioActuel = mario[EPEEGAUCHE2]; animMario = 3; }
-
-                            //Test Epee Nv 3.  Rochers
-                            if ( power > 2 ) {
-                                if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                                    { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 49)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 49)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                                    { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 49)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 49)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                            } //Fin
-
-                            //Test epee puissance 2 - potiches
-                            if ( power > 1 ) {
-                                if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                                    { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 50)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 50)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                                if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                                    { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 50)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                      if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 50)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; FSOUND_PlaySound(FSOUND_FREE, destroy); }
-                                    }
-                            } //Fin
-
-                            //Test Coffres
-
-                                if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                    }
-                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                    }
-                                if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                                    { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                      if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                    }
-                                if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                                    { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                      if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; FSOUND_PlaySound(FSOUND_FREE, fanfare); } }
-                                    }
-
-                                //Ouverture du coffre
-                                if (open == 1) {
-                                    switch (coffre) {
-                                        case 0 :
-                                        money += 50;
-                                        AfficheDialogues (ecran, police, 995);
-                                        open = 0;
-                                        break;
-
-                                        case 1 :
-                                        money += 100;
-                                        AfficheDialogues (ecran, police, 994);
-                                        open = 0;
-                                        break;
-
-                                        case 2 :
-                                        money += 200;
-                                        AfficheDialogues (ecran, police, 993);
-                                        open = 0;
-                                        break;
-
-                                        case 3 :
-                                        potion++;
-                                        AfficheDialogues (ecran, police, 992);
-                                        open = 0;
-                                        break;
-
-                                        case 4 :
-                                        potion += 2;
-                                        AfficheDialogues (ecran, police, 991);
-                                        open = 0;
-                                        break;
-
-                                        case 5 :
-                                        key++;
-                                        AfficheDialogues (ecran, police, 990);
-                                        open = 0;
-                                        break;
-
-                                        case 6 :
-                                        coeur=++coeurmax;
-                                        AfficheDialogues (ecran, police, 989);
-                                        open = 0;
-                                        break;
-                                    }
-                                }
-
-
-                            //Test Switchs
-
-                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 48 || carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 48  )
-                                         { if ( ValeurSwitch(lswitch) == 1) { if (key > 0) { OuvreSwitch();
-                                        FSOUND_PlaySound(FSOUND_FREE, fanfare); if ( ValeurSwitch(lswitch) == 0) key--; break; }  } }
-                                    }
-
-                            //Test baton de feu
-
-                                if ( baton == 1 ) //Si on a le baton de feu
-                                {
-                                    if ( baton_used == 0) // Si on ne l'a pas utilisé
-                                    {  //Suivant la direction de Roswyn ( Mario ? ;)
-                                        if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                                        {
-                                            direction_baton = HAUT;
-                                            PositionBaton.x = positionMario.x + 7;
-                                            PositionBaton.y = positionMario.y + 7;
-                                        }
-
-                                        if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                                        {
-                                            direction_baton = BAS;
-                                            PositionBaton.x = positionMario.x + 7;
-                                            PositionBaton.y = positionMario.y + 35;
-                                        }
-
-                                        if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                                        {
-                                            direction_baton = DROITE;
-                                            PositionBaton.x = positionMario.x + 35;
-                                            PositionBaton.y = positionMario.y + 7;
-                                        }
-
-                                        if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                                        {
-                                            direction_baton = GAUCHE;
-                                            PositionBaton.x = positionMario.x + 7;
-                                            PositionBaton.y = positionMario.y + 7;
-                                        }
-
-                                        baton_used = 1;
-                                    }
-                                }
+                        space_keydown = 1;
                     }
                     break;
 
@@ -1208,203 +710,25 @@ int main(int argc, char *argv[])
                         case SDL_HAT_UP : // Flèche haut anim complete : on teste les 2 tiles contre lesquels se trouve le perso et on met a jour l'animation selon la valeur d' animMario
                         case SDL_HAT_RIGHTUP :
                         case SDL_HAT_LEFTUP :
-                            if (SDL_JoystickGetButton (joystick, 0)) {
-                                if ( animMarioEpee == 1) { marioActuel = mario[EPEEHAUT]; }
-                                else { marioActuel = mario[EPEEHAUT2]; }
-                                animMario = 3;
-                                if (positionMario.y <= 1) {
-                                // on warpe si warpGauche == le nombre d'un level, sinon 0
-                                if (warpHaut != 0) { level = warpHaut; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 380; baton_used = 0; }
-                                 break; }
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] <= 20)  break;
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] <= 20)  break;
-                                //Gestion des tiles HIT
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                //Gestion des cases speciales (coffres...)
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  break;
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  break;
-
-                                else positionMario.y -= 2; break;
-                                    }
-
-                            else if (positionMario.y <= 1) {
-                                // on warpe si warpHaut == le nombre d'un level, sinon 0
-                                if (warpHaut != 0) { level = warpHaut; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 380; baton_used = 0; }
-                                if (animMario == 1) { marioActuel = mario[HAUT]; } else  marioActuel = mario[HAUT2];  break;  }
-
-                            if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] <= 20) { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
-                            if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] <= 20) { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
-                            //Gestion des tiles HIT
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
-                                    {   if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
-                                    {   if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                            //Gestion des cases speciales (coffres...)
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 46) { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
-
-                            else positionMario.y -= 2;
-                            if (animMario == 1) { marioActuel = mario[HAUT]; } else { marioActuel = mario[HAUT2]; }
+                            arrow_pressed = 1;
+                            if (SDL_JoystickGetButton (joystick, 0)) space_pressed = 1;
                             break;
 
                         case SDL_HAT_DOWN: // Flèche bas anim idem
                         case SDL_HAT_RIGHTDOWN :
                         case SDL_HAT_LEFTDOWN :
-
-                            if (SDL_JoystickGetButton (joystick, 0)) {
-                                if ( animMarioEpee == 1) { marioActuel = mario[EPEEBAS]; }
-                                else { marioActuel = mario[EPEEBAS2]; }
-                                animMario = 3;
-                                if (positionMario.y >= ecran->h - 80) {
-                                // on warpe si warpGauche == le nombre d'un level, sinon 0
-                                if (warpBas != 0) { level = warpBas; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 0; baton_used = 0; }
-                                 break; }
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20)  break;
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20)  break;
-                                //Gestion des tiles HIT
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                //Gestion des cases speciales (coffres...)
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  break;
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  break;
-
-                                else positionMario.y += 2; break;
-                                    }
-
-                            else if (positionMario.y >= ecran->h - 80) {
-                                 // on warpe si warpHaut == le nombre d'un level, sinon 0
-                                if (warpBas != 0) { level = warpBas; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 0; baton_used = 0; }
-                                if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
-
-                            if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
-                            if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
-                            //Gestion des tiles HIT
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                            //Gestion des cases speciales (coffres...)
-                                if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
-                                if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
-
-                            else positionMario.y += 2;
-                            if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2];
+                            arrow_pressed = 2;
+                            if (SDL_JoystickGetButton (joystick, 0)) space_pressed = 1;
                             break;
 
                         case SDL_HAT_RIGHT: // Flèche droite anim idem
-
-                            if (SDL_JoystickGetButton (joystick, 0)) {
-                                if ( animMarioEpee == 1) { marioActuel = mario[EPEEDROITE]; }
-                                else { marioActuel = mario[EPEEDROITE2]; }
-                                animMario = 3;
-                                if (positionMario.x >= ecran->w - 40) {
-                                // on warpe si warpGauche == le nombre d'un level, sinon 0
-                                if (warpDroite != 0) { level = warpDroite; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 0; baton_used = 0;
-                                  } break; }
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] <= 20)  break;
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] <= 20)  break;
-                                //Gestion des tiles HIT
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                //Gestion des cases speciales (coffres...)
-                                    if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 46)  break;
-                                    if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 46)  break;
-
-                                else positionMario.x += 2; break;
-                                    }
-
-                            else if (positionMario.x >= ecran->w - 40) {
-                            // on warpe si warpDroite == le nombre d'un level, sinon 0
-                                if (warpDroite != 0) { level = warpDroite; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 0; baton_used = 0; }
-                                if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
-
-                            if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] <= 20) { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
-                            if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
-                            //Gestion des tiles HIT
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                            //Gestion des cases speciales (coffres...)
-                                    if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 46)  { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
-                                    if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
-
-                            else positionMario.x += 2;
-                            if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2];
+                            arrow_pressed = 3;
+                            if (SDL_JoystickGetButton (joystick, 0)) space_pressed = 1;
                             break;
 
                         case SDL_HAT_LEFT: // Flèche gauche anim idem
-
-                            if (SDL_JoystickGetButton (joystick, 0)) {
-                                if ( animMarioEpee == 1) { marioActuel = mario[EPEEGAUCHE]; }
-                                else { marioActuel = mario[EPEEGAUCHE2]; }
-                                animMario = 3;
-                                if (positionMario.x <= 1) {
-                                // on warpe si warpGauche == le nombre d'un level, sinon 0
-                                if (warpGauche != 0) { level = warpGauche; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 380; baton_used = 0;
-                                  } break; }
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] <= 20)  break;
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] <= 20)  break;
-                                //Gestion des tiles HIT
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 51)
-                                    { if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                //Gestion des cases speciales (coffres...)
-                                    if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 46)  break;
-                                    if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 46)  break;
-
-                                else positionMario.x -= 2; break;
-                                    }
-
-                            else if (positionMario.x <= 1) {
-                                // on warpe si warpGauche == le nombre d'un level, sinon 0
-                                if (warpGauche != 0) { level = warpGauche; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 380; baton_used = 0; }
-                                if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
-                            if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] <= 20) { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
-                            if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
-                            //Gestion des tiles HIT
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                                if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 51)
-                                    {   if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2];
-                                        if (invincibilite == 0) {
-                                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
-                            //Gestion des cases speciales (coffres...)
-                                    if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 46)  { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
-                                    if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
-
-                            else positionMario.x -= 2;
-                            if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2];
+                            arrow_pressed = 4;
+                            if (SDL_JoystickGetButton (joystick, 0)) space_pressed = 1;
                             break;
 
                     }
@@ -1412,15 +736,408 @@ int main(int argc, char *argv[])
                 }
                 }
 
+            switch(arrow_pressed)
+            {
+                case 1: // SDLK_UP
+                    if (space_pressed) {
+                        if ( animMarioEpee == 1) { marioActuel = mario[EPEEHAUT]; }
+                        else { marioActuel = mario[EPEEHAUT2]; }
+                        animMario = 3;
+                        if (positionMario.y <= 1) {
+                        // on warpe si warpGauche == le nombre d'un level, sinon 0
+                        if (warpHaut != 0) { level = warpHaut; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 380; baton_used = 0; }
+                         break; }
+                        if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] <= 20)  break;
+                        if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] <= 20)  break;
+                        //Gestion des tiles HIT
+                        if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
+                            { if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
+                            { if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        //Gestion des cases speciales (coffres...)
+                        if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  break;
+                        if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  break;
+
+                        else positionMario.y -= 2; break;
+                            }
+
+                    else if (positionMario.y <= 1) {
+                        // on warpe si warpHaut == le nombre d'un level, sinon 0
+                        if (warpHaut != 0) { level = warpHaut; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 380; baton_used = 0; }
+                        if (animMario == 1) { marioActuel = mario[HAUT]; } else  marioActuel = mario[HAUT2];  break;  }
+
+                    if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] <= 20) { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
+                    if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] <= 20) { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
+                    //Gestion des tiles HIT
+                        if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
+                            {   if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2];
+                                if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
+                            {   if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2];
+                                if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                    //Gestion des cases speciales (coffres...)
+                        if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 46) { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
+                        if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
+
+                    else positionMario.y -= 2;
+                    if (animMario == 1) { marioActuel = mario[HAUT]; } else { marioActuel = mario[HAUT2]; }
+                    break;
+
+                case 2: // SDLK_DOWN
+                    if (space_pressed) {
+                        if ( animMarioEpee == 1) { marioActuel = mario[EPEEBAS]; }
+                        else { marioActuel = mario[EPEEBAS2]; }
+                        animMario = 3;
+                        if (positionMario.y >= orig_height - 80) {
+                        // on warpe si warpGauche == le nombre d'un level, sinon 0
+                        if (warpBas != 0) { level = warpBas; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 0; baton_used = 0; }
+                         break; }
+                        if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20)  break;
+                        if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20)  break;
+                        //Gestion des tiles HIT
+                        if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
+                            { if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
+                            { if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        //Gestion des cases speciales (coffres...)
+                        if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  break;
+                        if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  break;
+
+                        else positionMario.y += 2; break;
+                            }
+
+                    else if (positionMario.y >= orig_height - 80) {
+                         // on warpe si warpHaut == le nombre d'un level, sinon 0
+                        if (warpBas != 0) { level = warpBas; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.y = 0; baton_used = 0; }
+                        if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
+
+                    if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
+                    if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
+                    //Gestion des tiles HIT
+                        if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
+                            {   if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2];
+                                if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
+                            {   if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2];
+                                if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                    //Gestion des cases speciales (coffres...)
+                        if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
+                        if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
+
+                    else positionMario.y += 2;
+                    if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2];
+                    break;
+
+                case 3: // SDLK_RIGHT
+                    if (space_pressed) {
+                        if ( animMarioEpee == 1) { marioActuel = mario[EPEEDROITE]; }
+                        else { marioActuel = mario[EPEEDROITE2]; }
+                        animMario = 3;
+                        if (positionMario.x >= orig_width - 40) {
+                        // on warpe si warpGauche == le nombre d'un level, sinon 0
+                        if (warpDroite != 0) { level = warpDroite; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 0; baton_used = 0;
+                          } break; }
+                        if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] <= 20)  break;
+                        if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] <= 20)  break;
+                        //Gestion des tiles HIT
+                        if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 51)
+                            { if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 51)
+                            { if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        //Gestion des cases speciales (coffres...)
+                            if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 46)  break;
+                            if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 46)  break;
+
+                        else positionMario.x += 2; break;
+                            }
+
+                    else if (positionMario.x >= orig_width - 40) {
+                    // on warpe si warpDroite == le nombre d'un level, sinon 0
+                        if (warpDroite != 0) { level = warpDroite; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 0; baton_used = 0; }
+                        if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
+
+                    if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] <= 20) { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
+                    if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
+                    //Gestion des tiles HIT
+                        if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 51)
+                            {   if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2];
+                                if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 51)
+                            {   if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2];
+                                if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                    //Gestion des cases speciales (coffres...)
+                            if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 46)  { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
+                            if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
+
+                    else positionMario.x += 2;
+                    if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2];
+                    break;
+
+                case 4: // SDLK_LEFT
+                    if (space_pressed) {
+                        if ( animMarioEpee == 1) { marioActuel = mario[EPEEGAUCHE]; }
+                        else { marioActuel = mario[EPEEGAUCHE2]; }
+                        animMario = 3;
+                        if (positionMario.x <= 1) {
+                        // on warpe si warpGauche == le nombre d'un level, sinon 0
+                        if (warpGauche != 0) { level = warpGauche; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 380; baton_used = 0;
+                          } break; }
+                        if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] <= 20)  break;
+                        if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] <= 20)  break;
+                        //Gestion des tiles HIT
+                        if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 51)
+                            { if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 51)
+                            { if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        //Gestion des cases speciales (coffres...)
+                            if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 46)  break;
+                            if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 46)  break;
+
+                        else positionMario.x -= 2; break;
+                            }
+
+                    else if (positionMario.x <= 1) {
+                        // on warpe si warpGauche == le nombre d'un level, sinon 0
+                        if (warpGauche != 0) { level = warpGauche; chargerNiveau(carte, level); chargerDataNiveau (level); positionMario.x = 380; baton_used = 0; }
+                        if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
+                    if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] <= 20) { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
+                    if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] <= 20) { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
+                    //Gestion des tiles HIT
+                        if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 51)
+                            {   if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2];
+                                if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                        if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 51)
+                            {   if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2];
+                                if (invincibilite == 0) {
+                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                    //Gestion des cases speciales (coffres...)
+                            if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 46)  { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
+                            if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
+
+                    else positionMario.x -= 2;
+                    if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2];
+                    break;
+
+                default:
+                    break;
+            }
+            switch (space_keydown)
+            {
+                case 1: // SDLK_SPACE
+                    if (marioActuel == mario[BAS]) { marioActuel = mario[EPEEBAS]; animMario = 3; }
+                    if (marioActuel == mario[HAUT]) { marioActuel = mario[EPEEHAUT]; animMario = 3; }
+                    if (marioActuel == mario[DROITE]) { marioActuel = mario[EPEEDROITE]; animMario = 3; }
+                    if (marioActuel == mario[GAUCHE]) { marioActuel = mario[EPEEGAUCHE]; animMario = 3; }
+                    if (marioActuel == mario[BAS2]) { marioActuel = mario[EPEEBAS2]; animMario = 3; }
+                    if (marioActuel == mario[HAUT2]) { marioActuel = mario[EPEEHAUT2]; animMario = 3; }
+                    if (marioActuel == mario[DROITE2]) { marioActuel = mario[EPEEDROITE2]; animMario = 3; }
+                    if (marioActuel == mario[GAUCHE2]) { marioActuel = mario[EPEEGAUCHE2]; animMario = 3; }
+
+                    //Test Epee Nv 3.  Rochers
+                    if ( power > 2 ) {
+                        if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
+                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
+                                { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
+                                { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                            }
+                        if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
+                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
+                                { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
+                                { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                            }
+                        if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
+                            { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 49)
+                                { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                              if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 49)
+                                { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                            }
+                        if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
+                            { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 49)
+                                { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                              if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 49)
+                                { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                            }
+                    } //Fin
+
+                    //Test epee puissance 2 - potiches
+                    if ( power > 1 ) {
+                        if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
+                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
+                                { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
+                                { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                            }
+                        if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
+                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
+                                { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
+                                { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                            }
+                        if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
+                            { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 50)
+                                { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                              if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 50)
+                                { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                            }
+                        if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
+                            { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 50)
+                                { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                              if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 50)
+                                { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                            }
+                    } //Fin
+
+                    //Test Coffres
+
+                        if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
+                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
+                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
+                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                            }
+                        if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
+                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
+                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
+                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                            }
+                        if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
+                            { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 46)
+                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                              if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 46)
+                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                            }
+                        if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
+                            { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 46)
+                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                              if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 46)
+                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                            }
+
+                        //Ouverture du coffre
+                        if (open == 1) {
+                            switch (coffre) {
+                                case 0 :
+                                money += 50;
+                                AfficheDialogues (ecran, police, 995);
+                                open = 0;
+                                break;
+
+                                case 1 :
+                                money += 100;
+                                AfficheDialogues (ecran, police, 994);
+                                open = 0;
+                                break;
+
+                                case 2 :
+                                money += 200;
+                                AfficheDialogues (ecran, police, 993);
+                                open = 0;
+                                break;
+
+                                case 3 :
+                                potion++;
+                                AfficheDialogues (ecran, police, 992);
+                                open = 0;
+                                break;
+
+                                case 4 :
+                                potion += 2;
+                                AfficheDialogues (ecran, police, 991);
+                                open = 0;
+                                break;
+
+                                case 5 :
+                                key++;
+                                AfficheDialogues (ecran, police, 990);
+                                open = 0;
+                                break;
+
+                                case 6 :
+                                coeur=++coeurmax;
+                                AfficheDialogues (ecran, police, 989);
+                                open = 0;
+                                break;
+                            }
+                        }
+
+
+                    //Test Switchs
+
+                        if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
+                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 48 || carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 48  )
+                                 { if ( ValeurSwitch(lswitch) == 1) { if (key > 0) { OuvreSwitch();
+                                Mix_PlayChannel(-1, fanfare, 0); if ( ValeurSwitch(lswitch) == 0) key--; break; }  } }
+                            }
+
+                    //Test baton de feu
+
+                        if ( baton == 1 ) //Si on a le baton de feu
+                        {
+                            if ( baton_used == 0) // Si on ne l'a pas utilisé
+                            {  //Suivant la direction de Roswyn ( Mario ? ;)
+                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
+                                {
+                                    direction_baton = HAUT;
+                                    PositionBaton.x = positionMario.x + 7;
+                                    PositionBaton.y = positionMario.y + 7;
+                                }
+
+                                if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
+                                {
+                                    direction_baton = BAS;
+                                    PositionBaton.x = positionMario.x + 7;
+                                    PositionBaton.y = positionMario.y + 35;
+                                }
+
+                                if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
+                                {
+                                    direction_baton = DROITE;
+                                    PositionBaton.x = positionMario.x + 35;
+                                    PositionBaton.y = positionMario.y + 7;
+                                }
+
+                                if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
+                                {
+                                    direction_baton = GAUCHE;
+                                    PositionBaton.x = positionMario.x + 7;
+                                    PositionBaton.y = positionMario.y + 7;
+                                }
+
+                                baton_used = 1;
+                            }
+                        }
+                    break;
+                default:
+                    break;
+            }
+
 /* Gestion de la pause */
     if (input.pause == 1)
-        pause();
+        continuer = pauseGame();
 
 
     //Gestion du son :
     if ( animMario == 3 ) { if (epee2 == 0) { epee = 0; epee2 = 1; } }
     else epee2 = 0;
-    if (epee == 0) { epee = 1;  FSOUND_PlaySound(FSOUND_FREE, ah); FSOUND_PlaySound(FSOUND_FREE, sword);  }
+    if (epee == 0) { epee = 1;  Mix_PlayChannel(-1, ah, 0); Mix_PlayChannel(-1, sword, 0);  }
 
 
     //******Deplacement et gestion de ennemi1 s'il est vivant**********
@@ -1439,7 +1156,7 @@ int main(int argc, char *argv[])
         }
         //Vers le bas si player en bas
         if (positionMario.y - positionEnnemi1.y > 0) {
-        if (positionEnnemi1.y >= ecran->h - 80) { if (animEnnemi1 == 1) { ennemi1Actuel = ennemi1[BAS]; } else { ennemi1Actuel = ennemi1[BAS2]; } }
+        if (positionEnnemi1.y >= orig_height - 80) { if (animEnnemi1 == 1) { ennemi1Actuel = ennemi1[BAS]; } else { ennemi1Actuel = ennemi1[BAS2]; } }
          else if (carte[positionEnnemi1.x / TAILLE_BLOC] [(positionEnnemi1.y + 2) / TAILLE_BLOC + 1] <= 20) { if (animEnnemi1 == 1) ennemi1Actuel = ennemi1[BAS]; else ennemi1Actuel = ennemi1[BAS2]; }
          else if (carte[positionEnnemi1.x / TAILLE_BLOC + 1] [(positionEnnemi1.y + 2) / TAILLE_BLOC + 1] <= 20) { if (animEnnemi1 == 1) ennemi1Actuel = ennemi1[BAS]; else ennemi1Actuel = ennemi1[BAS2]; }
          else if (carte[positionEnnemi1.x / TAILLE_BLOC] [(positionEnnemi1.y + 2) / TAILLE_BLOC + 1] >= 46) { if (animEnnemi1 == 1) ennemi1Actuel = ennemi1[BAS]; else ennemi1Actuel = ennemi1[BAS2]; }
@@ -1449,7 +1166,7 @@ int main(int argc, char *argv[])
         }
         //Vers la droite si player a droite
         if (positionMario.x - positionEnnemi1.x > 0) {
-        if (positionEnnemi1.x >= ecran->w - 35) { if (animEnnemi1 == 1) { ennemi1Actuel = ennemi1[DROITE]; } else { ennemi1Actuel = ennemi1[DROITE2]; } }
+        if (positionEnnemi1.x >= orig_width - 35) { if (animEnnemi1 == 1) { ennemi1Actuel = ennemi1[DROITE]; } else { ennemi1Actuel = ennemi1[DROITE2]; } }
          else if (carte[(positionEnnemi1.x + 2) / TAILLE_BLOC + 1] [positionEnnemi1.y / TAILLE_BLOC] <= 20) { if (animEnnemi1 == 1) ennemi1Actuel = ennemi1[DROITE]; else ennemi1Actuel = ennemi1[DROITE2]; }
          else if (carte[(positionEnnemi1.x + 2) / TAILLE_BLOC + 1] [positionEnnemi1.y / TAILLE_BLOC + 1] <= 20) { if (animEnnemi1 == 1) ennemi1Actuel = ennemi1[DROITE]; else ennemi1Actuel = ennemi1[DROITE2]; }
          else if (carte[(positionEnnemi1.x + 2) / TAILLE_BLOC + 1] [positionEnnemi1.y / TAILLE_BLOC] >= 46) { if (animEnnemi1 == 1) ennemi1Actuel = ennemi1[DROITE]; else ennemi1Actuel = ennemi1[DROITE2]; }
@@ -1477,8 +1194,8 @@ int main(int argc, char *argv[])
              if (abs(x) < 30 && abs(y) < 25) {
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (ennemi1freeze2 == 0) { ennemi1freeze = ennemi1freeze2 = 1;
-                    ennemi1life -= 1; if (ennemi1life <= 0) FSOUND_PlaySound(FSOUND_FREE, ekill); else FSOUND_PlaySound(FSOUND_FREE, ehit); tempsennemi1 = SDL_GetTicks(); } }
-                    else { coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    ennemi1life -= 1; if (ennemi1life <= 0) Mix_PlayChannel(-1, ekill, 0); else Mix_PlayChannel(-1, ehit, 0); tempsennemi1 = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } }
 
 
@@ -1492,21 +1209,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[EPEEBAS]; DeplacePlayer(HAUT, 1, ecran, carte); }
                             DeplaceEnnemi ( 1, HAUT, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level );
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut
                             //Si on regarde en bas :
@@ -1515,21 +1218,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, ennemi en hau, on se retourne
                             if ( y > 0) { marioActuel = mario[EPEEHAUT]; DeplacePlayer(BAS, 1, ecran, carte); }
                             DeplaceEnnemi (1, BAS, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas
                             //Si on regarde a droite :
@@ -1538,21 +1227,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a gauche, et que l'ennemi arrive a droite, on se retourne
                             if ( x > 0) { marioActuel = mario[EPEEGAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); }
                             DeplaceEnnemi (1, DROITE, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite
                             //Si on regarde a gauche :
@@ -1561,21 +1236,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a droite, et que l'ennemi arrive a gauche, on se retourne
                             if ( x < 0) { marioActuel = mario[EPEEDROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); }
                             DeplaceEnnemi (1, GAUCHE, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche
                             // Fin A- Attaque
@@ -1590,21 +1251,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte); DeplaceEnnemi (1, BAS, 1, ecran, carte); }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  DeplaceEnnemi (1, HAUT, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut 1
                         else if (  marioActuel == mario[HAUT2] ) {
@@ -1612,21 +1259,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte); DeplaceEnnemi (1, BAS, 1, ecran, carte); }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  DeplaceEnnemi (1, HAUT, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut 2
                             //Si on regarde en bas :
@@ -1635,42 +1268,14 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, et que l'ennemi arrive par le haut, on se retourne
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte); DeplaceEnnemi (1, HAUT, 1, ecran, carte); }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);  DeplaceEnnemi (1, BAS, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas 1
                         else if (  marioActuel == mario[BAS2] ) {
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte); DeplaceEnnemi (1, HAUT, 1, ecran, carte); }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);  DeplaceEnnemi (1, BAS, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas 2
                             //Si on regarde a droite :
@@ -1678,21 +1283,7 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); DeplaceEnnemi (1, GAUCHE, 1, ecran, carte); }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);  DeplaceEnnemi (1, DROITE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite 1
                         else if (  marioActuel == mario[DROITE2] ) {
@@ -1700,21 +1291,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a droite, et que l'ennemi arrive par a gauche, on se retourne
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); DeplaceEnnemi (1, GAUCHE, 1, ecran, carte); }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);  DeplaceEnnemi (1, DROITE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite 2
                             //Si on regarde a gauche :
@@ -1722,42 +1299,14 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); DeplaceEnnemi (1, DROITE, 1, ecran, carte); }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);  DeplaceEnnemi (1, GAUCHE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche 1
                         else if (  marioActuel == mario[GAUCHE2] ) {
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); DeplaceEnnemi (1, DROITE, 1, ecran, carte); }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);  DeplaceEnnemi (1, GAUCHE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche 2
                             }// Fin B- Subit les dommages
@@ -1794,7 +1343,7 @@ int main(int argc, char *argv[])
         }
         //Vers le bas si 2
         if (direction == 2) {
-        if (positionEnnemi2.y >= ecran->h - 80) { direction++;  if (animEnnemi2 == 1) { ennemi2Actuel = ennemi2[BAS]; } else { ennemi2Actuel = ennemi2[BAS2]; } }
+        if (positionEnnemi2.y >= orig_height - 80) { direction++;  if (animEnnemi2 == 1) { ennemi2Actuel = ennemi2[BAS]; } else { ennemi2Actuel = ennemi2[BAS2]; } }
          else if (carte[positionEnnemi2.x / TAILLE_BLOC] [(positionEnnemi2.y + 2) / TAILLE_BLOC + 1] <= 20) { direction++;  if (animEnnemi2 == 1) ennemi2Actuel = ennemi2[BAS]; else ennemi2Actuel = ennemi2[BAS2]; }
          else if (carte[positionEnnemi2.x / TAILLE_BLOC + 1] [(positionEnnemi2.y + 2) / TAILLE_BLOC + 1] <= 20) { direction++;  if (animEnnemi2 == 1) ennemi2Actuel = ennemi2[BAS]; else ennemi2Actuel = ennemi2[BAS2]; }
          else if (carte[positionEnnemi2.x / TAILLE_BLOC] [(positionEnnemi2.y + 2) / TAILLE_BLOC + 1] >= 46) { direction++;  if (animEnnemi2 == 1) ennemi2Actuel = ennemi2[BAS]; else ennemi2Actuel = ennemi2[BAS2]; }
@@ -1804,7 +1353,7 @@ int main(int argc, char *argv[])
         }
         //Vers la droite si 3
         if (direction == 3) {
-        if (positionEnnemi2.x >= ecran->w - 35) { direction++;  if (animEnnemi2 == 1) { ennemi2Actuel = ennemi2[DROITE]; } else { ennemi2Actuel = ennemi2[DROITE2]; } }
+        if (positionEnnemi2.x >= orig_width - 35) { direction++;  if (animEnnemi2 == 1) { ennemi2Actuel = ennemi2[DROITE]; } else { ennemi2Actuel = ennemi2[DROITE2]; } }
          else if (carte[(positionEnnemi2.x + 2) / TAILLE_BLOC + 1] [positionEnnemi2.y / TAILLE_BLOC] <= 20) { direction++;  if (animEnnemi2 == 1) ennemi2Actuel = ennemi2[DROITE]; else ennemi2Actuel = ennemi2[DROITE2]; }
          else if (carte[(positionEnnemi2.x + 2) / TAILLE_BLOC + 1] [positionEnnemi2.y / TAILLE_BLOC + 1] <= 20) { direction++;  if (animEnnemi2 == 1) ennemi2Actuel = ennemi2[DROITE]; else ennemi2Actuel = ennemi2[DROITE2]; }
          else if (carte[(positionEnnemi2.x + 2) / TAILLE_BLOC + 1] [positionEnnemi2.y / TAILLE_BLOC] >= 46) { direction++;  if (animEnnemi2 == 1) ennemi2Actuel = ennemi2[DROITE]; else ennemi2Actuel = ennemi2[DROITE2]; }
@@ -1832,8 +1381,8 @@ int main(int argc, char *argv[])
              if (abs(x) < 30 && abs(y) < 25) {
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (ennemi2freeze2 == 0) { ennemi2freeze = ennemi2freeze2 = 1; ennemi2life -= 1;
-                    if (ennemi2life <= 0) FSOUND_PlaySound(FSOUND_FREE, ekill); else FSOUND_PlaySound(FSOUND_FREE, ehit);tempsennemi2 = SDL_GetTicks(); } }
-                    else { coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    if (ennemi2life <= 0) Mix_PlayChannel(-1, ekill, 0); else Mix_PlayChannel(-1, ehit, 0);tempsennemi2 = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } }
 
 
@@ -1846,21 +1395,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[EPEEBAS]; DeplacePlayer(HAUT, 1, ecran, carte); }
                             DeplaceEnnemi (2, HAUT, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut
                             //Si on regarde en bas :
@@ -1869,21 +1404,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, ennemi en hau, on se retourne
                             if ( y > 0) { marioActuel = mario[EPEEHAUT]; DeplacePlayer(BAS, 1, ecran, carte); }
                             DeplaceEnnemi (2, BAS, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas
                             //Si on regarde a droite :
@@ -1892,21 +1413,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a gauche, et que l'ennemi arrive a droite, on se retourne
                             if ( x > 0) { marioActuel = mario[EPEEGAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); }
                             DeplaceEnnemi (2, DROITE, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite
                             //Si on regarde a gauche :
@@ -1915,21 +1422,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a droite, et que l'ennemi arrive a gauche, on se retourne
                             if ( x < 0) { marioActuel = mario[EPEEDROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); }
                             DeplaceEnnemi (2, GAUCHE, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche
                             // Fin A- Attaque
@@ -1944,21 +1437,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte); DeplaceEnnemi (2, BAS, 1, ecran, carte); }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  DeplaceEnnemi (2, HAUT, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut 1
                         else if (  marioActuel == mario[HAUT2] ) {
@@ -1966,21 +1445,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte); DeplaceEnnemi (2, BAS, 1, ecran, carte); }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  DeplaceEnnemi (2, HAUT, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut 2
                             //Si on regarde en bas :
@@ -1989,42 +1454,14 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, et que l'ennemi arrive par le haut, on se retourne
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte); DeplaceEnnemi (2, HAUT, 1, ecran, carte); }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);  DeplaceEnnemi (2, BAS, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas 1
                         else if (  marioActuel == mario[BAS2] ) {
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte); DeplaceEnnemi (2, HAUT, 1, ecran, carte); }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);  DeplaceEnnemi (2, BAS, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas 2
                             //Si on regarde a droite :
@@ -2032,21 +1469,7 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); DeplaceEnnemi (2, GAUCHE, 1, ecran, carte); }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);  DeplaceEnnemi (2, DROITE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite 1
                         else if (  marioActuel == mario[DROITE2] ) {
@@ -2054,21 +1477,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a droite, et que l'ennemi arrive par a gauche, on se retourne
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); DeplaceEnnemi (2, GAUCHE, 1, ecran, carte); }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);  DeplaceEnnemi (2, DROITE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite 2
                             //Si on regarde a gauche :
@@ -2076,42 +1485,14 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); DeplaceEnnemi (2, DROITE, 1, ecran, carte); }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);  DeplaceEnnemi (2, GAUCHE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche 1
                         else if (  marioActuel == mario[GAUCHE2] ) {
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); DeplaceEnnemi (2, DROITE, 1, ecran, carte); }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);  DeplaceEnnemi (2, GAUCHE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche 2
                             }// Fin B- Subit les dommages
@@ -2149,7 +1530,7 @@ int main(int argc, char *argv[])
         }
         //Vers le bas si 2
         if (direction2 == 2) {
-        if (positionEnnemi3.y >= ecran->h - 80) { direction2--;  if (animEnnemi3 == 1) { ennemi3Actuel = ennemi3[BAS]; } else { ennemi3Actuel = ennemi3[BAS2]; } }
+        if (positionEnnemi3.y >= orig_height - 80) { direction2--;  if (animEnnemi3 == 1) { ennemi3Actuel = ennemi3[BAS]; } else { ennemi3Actuel = ennemi3[BAS2]; } }
          else if (carte[positionEnnemi3.x / TAILLE_BLOC] [(positionEnnemi3.y + 2) / TAILLE_BLOC + 1] <= 20) { direction2--;  if (animEnnemi3 == 1) ennemi3Actuel = ennemi3[BAS]; else ennemi3Actuel = ennemi3[BAS2]; }
          else if (carte[positionEnnemi3.x / TAILLE_BLOC + 1] [(positionEnnemi3.y + 2) / TAILLE_BLOC + 1] <= 20) { direction2--;  if (animEnnemi3 == 1) ennemi3Actuel = ennemi3[BAS]; else ennemi3Actuel = ennemi3[BAS2]; }
          else if (carte[positionEnnemi3.x / TAILLE_BLOC] [(positionEnnemi3.y + 2) / TAILLE_BLOC + 1] >= 46) { direction2--;  if (animEnnemi3 == 1) ennemi3Actuel = ennemi3[BAS]; else ennemi3Actuel = ennemi3[BAS2]; }
@@ -2159,7 +1540,7 @@ int main(int argc, char *argv[])
         }
         //Vers la droite si 3
         if (direction2 == 3) {
-        if (positionEnnemi3.x >= ecran->w - 35) { direction2++;  if (animEnnemi3 == 1) { ennemi3Actuel = ennemi3[DROITE]; } else { ennemi3Actuel = ennemi3[DROITE2]; } }
+        if (positionEnnemi3.x >= orig_width - 35) { direction2++;  if (animEnnemi3 == 1) { ennemi3Actuel = ennemi3[DROITE]; } else { ennemi3Actuel = ennemi3[DROITE2]; } }
          else if (carte[(positionEnnemi3.x + 2) / TAILLE_BLOC + 1] [positionEnnemi3.y / TAILLE_BLOC] <= 20) { direction2++;  if (animEnnemi3 == 1) ennemi3Actuel = ennemi3[DROITE]; else ennemi3Actuel = ennemi3[DROITE2]; }
          else if (carte[(positionEnnemi3.x + 2) / TAILLE_BLOC + 1] [positionEnnemi3.y / TAILLE_BLOC + 1] <= 20) { direction2++;  if (animEnnemi3 == 1) ennemi3Actuel = ennemi3[DROITE]; else ennemi3Actuel = ennemi3[DROITE2]; }
          else if (carte[(positionEnnemi3.x + 2) / TAILLE_BLOC + 1] [positionEnnemi3.y / TAILLE_BLOC] >= 46) { direction2++;  if (animEnnemi3 == 1) ennemi3Actuel = ennemi3[DROITE]; else ennemi3Actuel = ennemi3[DROITE2]; }
@@ -2187,8 +1568,8 @@ int main(int argc, char *argv[])
              if (abs(x) < 30 && abs(y) < 25) {
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (ennemi3freeze2 == 0) { ennemi3freeze = ennemi3freeze2 = 1; ennemi3life -= 1;
-                    if (ennemi3life <= 0) FSOUND_PlaySound(FSOUND_FREE, ekill); else FSOUND_PlaySound(FSOUND_FREE, ehit);tempsennemi3 = SDL_GetTicks(); } }
-                    else { coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    if (ennemi3life <= 0) Mix_PlayChannel(-1, ekill, 0); else Mix_PlayChannel(-1, ehit, 0);tempsennemi3 = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } }
 
 
@@ -2201,21 +1582,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[EPEEBAS]; DeplacePlayer(HAUT, 1, ecran, carte); }
                             DeplaceEnnemi (3, HAUT, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut
                             //Si on regarde en bas :
@@ -2224,21 +1591,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, ennemi en hau, on se retourne
                             if ( y > 0) { marioActuel = mario[EPEEHAUT]; DeplacePlayer(BAS, 1, ecran, carte); }
                             DeplaceEnnemi (3, BAS, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas
                             //Si on regarde a droite :
@@ -2247,21 +1600,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a gauche, et que l'ennemi arrive a droite, on se retourne
                             if ( x > 0) { marioActuel = mario[EPEEGAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); }
                             DeplaceEnnemi (3, DROITE, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite
                             //Si on regarde a gauche :
@@ -2270,21 +1609,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a droite, et que l'ennemi arrive a gauche, on se retourne
                             if ( x < 0) { marioActuel = mario[EPEEDROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); }
                             DeplaceEnnemi (3, GAUCHE, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche
                             // Fin A- Attaque
@@ -2299,21 +1624,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte); DeplaceEnnemi (3, BAS, 1, ecran, carte); }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  DeplaceEnnemi (3, HAUT, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut 1
                         else if (  marioActuel == mario[HAUT2] ) {
@@ -2321,21 +1632,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte); DeplaceEnnemi (3, BAS, 1, ecran, carte); }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  DeplaceEnnemi (3, HAUT, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut 2
                             //Si on regarde en bas :
@@ -2344,42 +1641,14 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, et que l'ennemi arrive par le haut, on se retourne
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte); DeplaceEnnemi (3, HAUT, 1, ecran, carte); }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);  DeplaceEnnemi (3, BAS, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas 1
                         else if (  marioActuel == mario[BAS2] ) {
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte); DeplaceEnnemi (3, HAUT, 1, ecran, carte); }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);  DeplaceEnnemi (3, BAS, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas 2
                             //Si on regarde a droite :
@@ -2387,21 +1656,7 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); DeplaceEnnemi (3, GAUCHE, 1, ecran, carte); }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);  DeplaceEnnemi (3, DROITE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite 1
                         else if (  marioActuel == mario[DROITE2] ) {
@@ -2409,21 +1664,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a droite, et que l'ennemi arrive par a gauche, on se retourne
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); DeplaceEnnemi (3, GAUCHE, 1, ecran, carte); }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);  DeplaceEnnemi (3, DROITE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite 2
                             //Si on regarde a gauche :
@@ -2431,42 +1672,14 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); DeplaceEnnemi (3, DROITE, 1, ecran, carte); }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);  DeplaceEnnemi (3, GAUCHE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche 1
                         else if (  marioActuel == mario[GAUCHE2] ) {
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); DeplaceEnnemi (3, DROITE, 1, ecran, carte); }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);  DeplaceEnnemi (3, GAUCHE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche 2
                             }// Fin B- Subit les dommages
@@ -2505,7 +1718,7 @@ int main(int argc, char *argv[])
         }
         //Vers le bas si 2
         if (direction3 == 2) {
-        if (positionEnnemi4.y >= ecran->h - 80) { direction3--;  if (animEnnemi4 == 1) { ennemi4Actuel = ennemi4[BAS]; } else { ennemi4Actuel = ennemi4[BAS2]; } }
+        if (positionEnnemi4.y >= orig_height - 80) { direction3--;  if (animEnnemi4 == 1) { ennemi4Actuel = ennemi4[BAS]; } else { ennemi4Actuel = ennemi4[BAS2]; } }
          else if (carte[positionEnnemi4.x / TAILLE_BLOC] [(positionEnnemi4.y + 2) / TAILLE_BLOC + 1] <= 20) { direction3--;  if (animEnnemi4 == 1) ennemi4Actuel = ennemi4[BAS]; else ennemi4Actuel = ennemi4[BAS2]; }
          else if (carte[positionEnnemi4.x / TAILLE_BLOC + 1] [(positionEnnemi4.y + 2) / TAILLE_BLOC + 1] <= 20) { direction3--;  if (animEnnemi4 == 1) ennemi4Actuel = ennemi4[BAS]; else ennemi4Actuel = ennemi4[BAS2]; }
          else if (carte[positionEnnemi4.x / TAILLE_BLOC] [(positionEnnemi4.y + 2) / TAILLE_BLOC + 1] >= 46) { direction3--;  if (animEnnemi4 == 1) ennemi4Actuel = ennemi4[BAS]; else ennemi4Actuel = ennemi4[BAS2]; }
@@ -2515,7 +1728,7 @@ int main(int argc, char *argv[])
         }
         //Vers la droite si 3
         if (direction3 == 3) {
-        if (positionEnnemi4.x >= ecran->w - 35) { direction3++;  if (animEnnemi4 == 1) { ennemi4Actuel = ennemi4[DROITE]; } else { ennemi4Actuel = ennemi4[DROITE2]; } }
+        if (positionEnnemi4.x >= orig_width - 35) { direction3++;  if (animEnnemi4 == 1) { ennemi4Actuel = ennemi4[DROITE]; } else { ennemi4Actuel = ennemi4[DROITE2]; } }
          else if (carte[(positionEnnemi4.x + 2) / TAILLE_BLOC + 1] [positionEnnemi4.y / TAILLE_BLOC] <= 20) { direction3++;  if (animEnnemi4 == 1) ennemi4Actuel = ennemi4[DROITE]; else ennemi4Actuel = ennemi4[DROITE2]; }
          else if (carte[(positionEnnemi4.x + 2) / TAILLE_BLOC + 1] [positionEnnemi4.y / TAILLE_BLOC + 1] <= 20) { direction3++;  if (animEnnemi4 == 1) ennemi4Actuel = ennemi4[DROITE]; else ennemi4Actuel = ennemi4[DROITE2]; }
          else if (carte[(positionEnnemi4.x + 2) / TAILLE_BLOC + 1] [positionEnnemi4.y / TAILLE_BLOC] >= 46) { direction3++;  if (animEnnemi4 == 1) ennemi4Actuel = ennemi4[DROITE]; else ennemi4Actuel = ennemi4[DROITE2]; }
@@ -2543,8 +1756,8 @@ int main(int argc, char *argv[])
              if (abs(x) < 30 && abs(y) < 25) {
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (ennemi4freeze2 == 0) { ennemi4freeze = ennemi4freeze2 = 1; ennemi4life -= 1;
-                    if (ennemi4life <= 0) FSOUND_PlaySound(FSOUND_FREE, ekill); else FSOUND_PlaySound(FSOUND_FREE, ehit); tempsennemi4 = SDL_GetTicks(); } }
-                    else { coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    if (ennemi4life <= 0) Mix_PlayChannel(-1, ekill, 0); else Mix_PlayChannel(-1, ehit, 0); tempsennemi4 = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } }
 
 
@@ -2557,21 +1770,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[EPEEBAS]; DeplacePlayer(HAUT, 1, ecran, carte); }
                             DeplaceEnnemi (4, HAUT, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut
                             //Si on regarde en bas :
@@ -2580,21 +1779,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, ennemi en hau, on se retourne
                             if ( y > 0) { marioActuel = mario[EPEEHAUT]; DeplacePlayer(BAS, 1, ecran, carte); }
                             DeplaceEnnemi (4, BAS, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas
                             //Si on regarde a droite :
@@ -2603,21 +1788,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a gauche, et que l'ennemi arrive a droite, on se retourne
                             if ( x > 0) { marioActuel = mario[EPEEGAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); }
                             DeplaceEnnemi (4, DROITE, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite
                             //Si on regarde a gauche :
@@ -2626,21 +1797,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a droite, et que l'ennemi arrive a gauche, on se retourne
                             if ( x < 0) { marioActuel = mario[EPEEDROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); }
                             DeplaceEnnemi (4, GAUCHE, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche
                             // Fin A- Attaque
@@ -2655,21 +1812,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte); DeplaceEnnemi (4, BAS, 1, ecran, carte); }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  DeplaceEnnemi (4, HAUT, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut 1
                         else if (  marioActuel == mario[HAUT2] ) {
@@ -2677,21 +1820,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte); DeplaceEnnemi (4, BAS, 1, ecran, carte); }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  DeplaceEnnemi (4, HAUT, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut 2
                             //Si on regarde en bas :
@@ -2700,42 +1829,14 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, et que l'ennemi arrive par le haut, on se retourne
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte); DeplaceEnnemi (4, HAUT, 1, ecran, carte); }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);  DeplaceEnnemi (4, BAS, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas 1
                         else if (  marioActuel == mario[BAS2] ) {
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte); DeplaceEnnemi (4, HAUT, 1, ecran, carte); }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);  DeplaceEnnemi (4, BAS, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                           if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas 2
                             //Si on regarde a droite :
@@ -2743,21 +1844,7 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); DeplaceEnnemi (4, GAUCHE, 1, ecran, carte); }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);  DeplaceEnnemi (4, DROITE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite 1
                         else if (  marioActuel == mario[DROITE2] ) {
@@ -2765,21 +1852,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a droite, et que l'ennemi arrive par a gauche, on se retourne
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); DeplaceEnnemi (4, GAUCHE, 1, ecran, carte); }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);  DeplaceEnnemi (4, DROITE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite 2
                             //Si on regarde a gauche :
@@ -2787,42 +1860,14 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); DeplaceEnnemi (4, DROITE, 1, ecran, carte); }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);  DeplaceEnnemi (4, GAUCHE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche 1
                         else if (  marioActuel == mario[GAUCHE2] ) {
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); DeplaceEnnemi (4, DROITE, 1, ecran, carte); }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);  DeplaceEnnemi (4, GAUCHE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche 2
                             }// Fin B- Subit les dommages
@@ -2860,7 +1905,7 @@ int main(int argc, char *argv[])
         }
         //Vers le bas si 2
         if (direction4 == 2) {
-        if (positionEnnemi5.y >= ecran->h - 80) { direction4--;  if (animEnnemi5 == 1) { ennemi5Actuel = ennemi5[BAS]; } else { ennemi5Actuel = ennemi5[BAS2]; } }
+        if (positionEnnemi5.y >= orig_height - 80) { direction4--;  if (animEnnemi5 == 1) { ennemi5Actuel = ennemi5[BAS]; } else { ennemi5Actuel = ennemi5[BAS2]; } }
          else if (carte[positionEnnemi5.x / TAILLE_BLOC] [(positionEnnemi5.y + 2) / TAILLE_BLOC + 1] <= 20) { direction4--;  if (animEnnemi5 == 1) ennemi5Actuel = ennemi5[BAS]; else ennemi5Actuel = ennemi5[BAS2]; }
          else if (carte[positionEnnemi5.x / TAILLE_BLOC + 1] [(positionEnnemi5.y + 2) / TAILLE_BLOC + 1] <= 20) { direction4--;  if (animEnnemi5 == 1) ennemi5Actuel = ennemi5[BAS]; else ennemi5Actuel = ennemi5[BAS2]; }
          else if (carte[positionEnnemi5.x / TAILLE_BLOC] [(positionEnnemi5.y + 2) / TAILLE_BLOC + 1] >= 46) { direction4--;  if (animEnnemi5 == 1) ennemi5Actuel = ennemi5[BAS]; else ennemi5Actuel = ennemi5[BAS2]; }
@@ -2870,7 +1915,7 @@ int main(int argc, char *argv[])
         }
         //Vers la droite si 3
         if (direction4 == 3) {
-        if (positionEnnemi5.x >= ecran->w - 35) { direction4++;  if (animEnnemi5 == 1) { ennemi5Actuel = ennemi5[DROITE]; } else { ennemi5Actuel = ennemi5[DROITE2]; } }
+        if (positionEnnemi5.x >= orig_width - 35) { direction4++;  if (animEnnemi5 == 1) { ennemi5Actuel = ennemi5[DROITE]; } else { ennemi5Actuel = ennemi5[DROITE2]; } }
          else if (carte[(positionEnnemi5.x + 2) / TAILLE_BLOC + 1] [positionEnnemi5.y / TAILLE_BLOC] <= 20) { direction4++;  if (animEnnemi5 == 1) ennemi5Actuel = ennemi5[DROITE]; else ennemi5Actuel = ennemi5[DROITE2]; }
          else if (carte[(positionEnnemi5.x + 2) / TAILLE_BLOC + 1] [positionEnnemi5.y / TAILLE_BLOC + 1] <= 20) { direction4++;  if (animEnnemi5 == 1) ennemi5Actuel = ennemi5[DROITE]; else ennemi5Actuel = ennemi5[DROITE2]; }
          else if (carte[(positionEnnemi5.x + 2) / TAILLE_BLOC + 1] [positionEnnemi5.y / TAILLE_BLOC] >= 46) { direction4++;  if (animEnnemi5 == 1) ennemi5Actuel = ennemi5[DROITE]; else ennemi5Actuel = ennemi5[DROITE2]; }
@@ -2898,8 +1943,8 @@ int main(int argc, char *argv[])
              if (abs(x) < 30 && abs(y) < 25) {
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (ennemi5freeze2 == 0) { ennemi5freeze = ennemi5freeze2 = 1; ennemi5life -= 1;
-                    if (ennemi5life <= 0) FSOUND_PlaySound(FSOUND_FREE, ekill); else FSOUND_PlaySound(FSOUND_FREE, ehit); tempsennemi5 = SDL_GetTicks(); } }
-                    else { coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    if (ennemi5life <= 0) Mix_PlayChannel(-1, ekill, 0); else Mix_PlayChannel(-1, ehit, 0); tempsennemi5 = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } }
 
 
@@ -2912,21 +1957,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[EPEEBAS]; DeplacePlayer(HAUT, 1, ecran, carte); }
                             DeplaceEnnemi (5, HAUT, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut
                             //Si on regarde en bas :
@@ -2935,21 +1966,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, ennemi en hau, on se retourne
                             if ( y > 0) { marioActuel = mario[EPEEHAUT]; DeplacePlayer(BAS, 1, ecran, carte); }
                             DeplaceEnnemi (5, BAS, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas
                             //Si on regarde a droite :
@@ -2958,21 +1975,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a gauche, et que l'ennemi arrive a droite, on se retourne
                             if ( x > 0) { marioActuel = mario[EPEEGAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); }
                             DeplaceEnnemi (5, DROITE, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite
                             //Si on regarde a gauche :
@@ -2981,21 +1984,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a droite, et que l'ennemi arrive a gauche, on se retourne
                             if ( x < 0) { marioActuel = mario[EPEEDROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); }
                             DeplaceEnnemi (5, GAUCHE, 2, ecran, carte);
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche
                             // Fin A- Attaque
@@ -3010,21 +1999,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte); DeplaceEnnemi (5, BAS, 1, ecran, carte); }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  DeplaceEnnemi (5, HAUT, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut 1
                         else if (  marioActuel == mario[HAUT2] ) {
@@ -3032,21 +2007,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte); DeplaceEnnemi (5, BAS, 1, ecran, carte); }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  DeplaceEnnemi (5, HAUT, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut 2
                             //Si on regarde en bas :
@@ -3055,42 +2016,14 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, et que l'ennemi arrive par le haut, on se retourne
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte); DeplaceEnnemi (5, HAUT, 1, ecran, carte); }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);  DeplaceEnnemi (5, BAS, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas 1
                         else if (  marioActuel == mario[BAS2] ) {
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte); DeplaceEnnemi (5, HAUT, 1, ecran, carte); }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);  DeplaceEnnemi (5, BAS, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas 2
                             //Si on regarde a droite :
@@ -3098,21 +2031,7 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); DeplaceEnnemi (5, GAUCHE, 1, ecran, carte); }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);  DeplaceEnnemi (5, DROITE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite 1
                         else if (  marioActuel == mario[DROITE2] ) {
@@ -3120,21 +2039,7 @@ int main(int argc, char *argv[])
                             //Si on regarde a droite, et que l'ennemi arrive par a gauche, on se retourne
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); DeplaceEnnemi (5, GAUCHE, 1, ecran, carte); }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);  DeplaceEnnemi (5, DROITE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite 2
                             //Si on regarde a gauche :
@@ -3142,42 +2047,14 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); DeplaceEnnemi (5, DROITE, 1, ecran, carte); }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);  DeplaceEnnemi (5, GAUCHE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche 1
                         else if (  marioActuel == mario[GAUCHE2] ) {
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); DeplaceEnnemi (5, DROITE, 1, ecran, carte); }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);  DeplaceEnnemi (5, GAUCHE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche 2
                             }// Fin B- Subit les dommages
@@ -3201,7 +2078,7 @@ int main(int argc, char *argv[])
 
             if ( bossArrive == 1 ) {
 
-                FSOUND_PlaySound(FSOUND_FREE, dragonstart);
+                Mix_PlayChannel(-1, dragonstart, 0);
 
 
                 //si c'est la premiere fois qu'on voit le boss
@@ -3284,16 +2161,16 @@ int main(int argc, char *argv[])
                  collision = 1;
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (bossfreeze2 == 0) { bossfreeze = bossfreeze2 = 1;
-                    bosslife -= 1; if (bosslife <= 0) FSOUND_PlaySound(FSOUND_FREE, dragondies); else FSOUND_PlaySound(FSOUND_FREE, dragonhit); tempsboss = SDL_GetTicks(); } }
-                    else { coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    bosslife -= 1; if (bosslife <= 0) Mix_PlayChannel(-1, dragondies, 0); else Mix_PlayChannel(-1, dragonhit, 0); tempsboss = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } } }
         else {
              if (abs(x) < 29 && abs(y) < 75) {
                  collision = 1;
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (bossfreeze2 == 0) { bossfreeze = bossfreeze2 = 1;
-                    bosslife -= 1; if (bosslife <= 0) FSOUND_PlaySound(FSOUND_FREE, dragondies); else FSOUND_PlaySound(FSOUND_FREE, dragonhit); tempsboss = SDL_GetTicks(); } }
-                    else { coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    bosslife -= 1; if (bosslife <= 0) Mix_PlayChannel(-1, dragondies, 0); else Mix_PlayChannel(-1, dragonhit, 0); tempsboss = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } } }
 
 
@@ -3303,14 +2180,14 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 10 ; i++) {
                             DeplacePlayer(BAS, 2, ecran, carte);
                             AfficheNiveau(position, ecran, carte, level);
-                            if (bossvivant == 1) { SDL_BlitSurface(bossActuel, NULL, ecran, &positionBoss); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario);
-                            SDL_Flip(ecran);
+                            if (bossvivant == 1) { BlitSprite(bossActuel, ecran, &positionBoss); }
+                            if (nbfireballs >= 1) { BlitSprite(fireballActuel, ecran, &positionFireball1); }
+                            if (nbfireballs >= 2) { BlitSprite(fireballActuel, ecran, &positionFireball2); }
+                            if (nbfireballs >= 3) { BlitSprite(fireballActuel, ecran, &positionFireball3); }
+                            if (nbfireballs >= 4) { BlitSprite(fireballActuel, ecran, &positionFireball4); }
+                            if ( weather >= 1 ) BlitSprite(tempsActuel, ecran, &positionPluie);
+                            BlitSprite(marioActuel, ecran, &positionMario);
+                            FlipScreen();
                             collision = 0;
                             }  }
 
@@ -3335,8 +2212,8 @@ int main(int argc, char *argv[])
 
                 //On efface le boss
                 AfficheNiveau(position, ecran, carte, level);
-                SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario);
-                SDL_Flip(ecran);
+                BlitSprite(marioActuel, ecran, &positionMario);
+                FlipScreen();
 
 
                 if (boss < 3 || boss == 4 || boss == 6 || boss == 8)
@@ -3359,14 +2236,13 @@ int main(int argc, char *argv[])
                     {
                         //Fin du jeu
                         SDL_Delay(4000);
-                        freeMusic();
-                        loadSong("sons/musique0.mp3");
+                        loadSong(0);
                         fin ( ecran, &continuer );
                     }
 
 
                 // Son a mettre avec objet laisse
-                FSOUND_PlaySound(FSOUND_FREE, fanfare);
+                Mix_PlayChannel(-1, fanfare, 0);
 
                  }   //on augmente le compteur comptant les boss vaincus
 
@@ -3422,7 +2298,7 @@ int main(int argc, char *argv[])
 
              if (abs(x) < 20 && abs(y) < 20) {
                  if (invincibilite == 0) {
-                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks();
+                    coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks();
                 } }
         }
 
@@ -3447,7 +2323,7 @@ int main(int argc, char *argv[])
 
              if (abs(x) < 20 && abs(y) < 20) {
                  if (invincibilite == 0) {
-                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks();
+                    coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks();
                 } }
         }
 
@@ -3472,7 +2348,7 @@ int main(int argc, char *argv[])
 
              if (abs(x) < 20 && abs(y) < 20) {
                  if (invincibilite == 0) {
-                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks();
+                    coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks();
                 } }
         }
 
@@ -3498,7 +2374,7 @@ int main(int argc, char *argv[])
 
              if (abs(x) < 20 && abs(y) < 20) {
                  if (invincibilite == 0) {
-                    coeur -= 1; FSOUND_PlaySound(FSOUND_FREE, hurt); invincibilite = 1; tempsCoeur = SDL_GetTicks();
+                    coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks();
                 } }
         }
 
@@ -3573,8 +2449,8 @@ int main(int argc, char *argv[])
                  if (ennemi1freeze2 == 0)
                  {
                      ennemi1freeze = ennemi1freeze2 = 1; ennemi1life -= 1;
-                     if (ennemi1life <= 0) FSOUND_PlaySound(FSOUND_FREE, ekill);
-                     else FSOUND_PlaySound(FSOUND_FREE, ehit);
+                     if (ennemi1life <= 0) Mix_PlayChannel(-1, ekill, 0);
+                     else Mix_PlayChannel(-1, ehit, 0);
                      tempsennemi1 = SDL_GetTicks();
                  }
             }
@@ -3599,8 +2475,8 @@ int main(int argc, char *argv[])
                  if (ennemi2freeze2 == 0)
                  {
                      ennemi2freeze = ennemi2freeze2 = 1; ennemi2life -= 1;
-                     if (ennemi2life <= 0) FSOUND_PlaySound(FSOUND_FREE, ekill);
-                     else FSOUND_PlaySound(FSOUND_FREE, ehit);
+                     if (ennemi2life <= 0) Mix_PlayChannel(-1, ekill, 0);
+                     else Mix_PlayChannel(-1, ehit, 0);
                      tempsennemi2 = SDL_GetTicks();
                  }
             }
@@ -3625,8 +2501,8 @@ int main(int argc, char *argv[])
                  if (ennemi3freeze2 == 0)
                  {
                      ennemi3freeze = ennemi3freeze2 = 1; ennemi3life -= 1;
-                     if (ennemi3life <= 0) FSOUND_PlaySound(FSOUND_FREE, ekill);
-                     else FSOUND_PlaySound(FSOUND_FREE, ehit);
+                     if (ennemi3life <= 0) Mix_PlayChannel(-1, ekill, 0);
+                     else Mix_PlayChannel(-1, ehit, 0);
                      tempsennemi3 = SDL_GetTicks();
                  }
             }
@@ -3650,8 +2526,8 @@ int main(int argc, char *argv[])
                  if (ennemi4freeze2 == 0)
                  {
                      ennemi4freeze = ennemi4freeze2 = 1; ennemi4life -= 1;
-                     if (ennemi4life <= 0) FSOUND_PlaySound(FSOUND_FREE, ekill);
-                     else FSOUND_PlaySound(FSOUND_FREE, ehit);
+                     if (ennemi4life <= 0) Mix_PlayChannel(-1, ekill, 0);
+                     else Mix_PlayChannel(-1, ehit, 0);
                      tempsennemi4 = SDL_GetTicks();
                  }
             }
@@ -3675,8 +2551,8 @@ int main(int argc, char *argv[])
                  if (ennemi5freeze2 == 0)
                  {
                      ennemi5freeze = ennemi5freeze2 = 1; ennemi5life -= 1;
-                     if (ennemi5life <= 0) FSOUND_PlaySound(FSOUND_FREE, ekill);
-                     else FSOUND_PlaySound(FSOUND_FREE, ehit);
+                     if (ennemi5life <= 0) Mix_PlayChannel(-1, ekill, 0);
+                     else Mix_PlayChannel(-1, ehit, 0);
                      tempsennemi5 = SDL_GetTicks();
                  }
             }
@@ -3709,7 +2585,7 @@ int main(int argc, char *argv[])
         }
         //Vers le bas si 2
         if (direction == 2) {
-        if (positionPnj1.y >= ecran->h - 80) { direction++;  if (animPnj1 == 1) { pnj1Actuel = pnj1[BAS]; } else { pnj1Actuel = pnj1[BAS2]; } }
+        if (positionPnj1.y >= orig_height - 80) { direction++;  if (animPnj1 == 1) { pnj1Actuel = pnj1[BAS]; } else { pnj1Actuel = pnj1[BAS2]; } }
          else if (carte[positionPnj1.x / TAILLE_BLOC] [(positionPnj1.y + 2) / TAILLE_BLOC + 1] <= 20) { direction++;  if (animPnj1 == 1) pnj1Actuel = pnj1[BAS]; else pnj1Actuel = pnj1[BAS2]; }
          else if (carte[positionPnj1.x / TAILLE_BLOC + 1] [(positionPnj1.y + 2) / TAILLE_BLOC + 1] <= 20) { direction++;  if (animPnj1 == 1) pnj1Actuel = pnj1[BAS]; else pnj1Actuel = pnj1[BAS2]; }
          else if (carte[positionPnj1.x / TAILLE_BLOC] [(positionPnj1.y + 2) / TAILLE_BLOC + 1] >= 46) { direction++;  if (animPnj1 == 1) pnj1Actuel = pnj1[BAS]; else pnj1Actuel = pnj1[BAS2]; }
@@ -3719,7 +2595,7 @@ int main(int argc, char *argv[])
         }
         //Vers la droite si 3
         if (direction == 3) {
-        if (positionPnj1.x >= ecran->w - 35) { direction++;  if (animPnj1 == 1) { pnj1Actuel = pnj1[DROITE]; } else { pnj1Actuel = pnj1[DROITE2]; } }
+        if (positionPnj1.x >= orig_width - 35) { direction++;  if (animPnj1 == 1) { pnj1Actuel = pnj1[DROITE]; } else { pnj1Actuel = pnj1[DROITE2]; } }
          else if (carte[(positionPnj1.x + 2) / TAILLE_BLOC + 1] [positionPnj1.y / TAILLE_BLOC] <= 20) { direction++;  if (animPnj1 == 1) { pnj1Actuel = pnj1[DROITE]; } else { pnj1Actuel = pnj1[DROITE2]; } }
          else if (carte[(positionPnj1.x + 2) / TAILLE_BLOC + 1] [positionPnj1.y / TAILLE_BLOC + 1] <= 20) { direction++;  if (animPnj1 == 1) { pnj1Actuel = pnj1[DROITE]; } else { pnj1Actuel = pnj1[DROITE2]; } }
          else if (carte[(positionPnj1.x + 2) / TAILLE_BLOC + 1] [positionPnj1.y / TAILLE_BLOC] >= 46) { direction++;  if (animPnj1 == 1) { pnj1Actuel = pnj1[DROITE]; } else { pnj1Actuel = pnj1[DROITE2]; } }
@@ -3745,18 +2621,18 @@ int main(int argc, char *argv[])
 
             //1. S'il y a collision, on joue un son :
              if (abs(x) < 20 && abs(y) < 20) {
-                FSOUND_PlaySound(FSOUND_FREE, ehit);
+                Mix_PlayChannel(-1, ehit, 0);
                 if (keystate[SDLK_SPACE])
                 {
                 if ( pnj1action == 0)
                 AfficheDialogues (ecran, police, dialogue1);
-                else shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
+                else continuer = shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
                 }
                 else if ( SDL_JoystickGetButton(joystick, 0))
                 {
                 if ( pnj1action == 0)
                 AfficheDialogues (ecran, police, dialogue1);
-                else shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
+                else continuer = shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
                 }
 
                 }
@@ -3771,21 +2647,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte); DeplaceEnnemi (6, BAS, 1, ecran, carte); }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  DeplaceEnnemi (6, HAUT, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut
                             //Si on regarde en bas :
@@ -3795,21 +2657,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, et que l'ennemi arrive par le haut, on se retourne
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte); DeplaceEnnemi (6, HAUT, 1, ecran, carte); }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);  DeplaceEnnemi (6, BAS, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas
                             //Si on regarde a droite :
@@ -3818,21 +2666,7 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte); DeplaceEnnemi (6, GAUCHE, 1, ecran, carte); }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);  DeplaceEnnemi (6, DROITE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite
                             //Si on regarde a gauche :
@@ -3841,21 +2675,7 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte); DeplaceEnnemi (6, DROITE, 1, ecran, carte); }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);  DeplaceEnnemi (6, GAUCHE, 1, ecran, carte); }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche
 
@@ -3875,19 +2695,19 @@ int main(int argc, char *argv[])
 
             //1. S'il y a collision, on joue un son :
              if (abs(x) < 20 && abs(y) < 20) {
-                FSOUND_PlaySound(FSOUND_FREE, ehit);
+                Mix_PlayChannel(-1, ehit, 0);
 
                 if (keystate[SDLK_SPACE])
                 {
                 if ( pnj2action == 0)
                 AfficheDialogues (ecran, police, dialogue2);
-                else shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
+                else continuer = shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
                 }
                 else if ( SDL_JoystickGetButton(joystick, 0))
                 {
                 if ( pnj2action == 0)
                 AfficheDialogues (ecran, police, dialogue2);
-                else shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
+                else continuer = shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
                 }
 
             }
@@ -3902,21 +2722,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en haut, et que l'ennemi arrive par le bas, on se retourne
                             if ( y < 0) { marioActuel = mario[BAS]; DeplacePlayer(HAUT, 1, ecran, carte);  }
                             else { DeplacePlayer(BAS, 1, ecran, carte);  }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Haut
                             //Si on regarde en bas :
@@ -3926,21 +2732,7 @@ int main(int argc, char *argv[])
                             //Si on regarde en bas, et que l'ennemi arrive par le haut, on se retourne
                             if ( y > 0) { marioActuel = mario[HAUT]; DeplacePlayer(BAS, 1, ecran, carte);  }
                             else { DeplacePlayer(HAUT, 1, ecran, carte);   }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Bas
                             //Si on regarde a droite :
@@ -3949,21 +2741,7 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x > 0) { marioActuel = mario[GAUCHE]; DeplacePlayer(DROITE, 1, ecran, carte);  }
                             else { DeplacePlayer(GAUCHE, 1, ecran, carte);   }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin droite
                             //Si on regarde a gauche :
@@ -3972,21 +2750,7 @@ int main(int argc, char *argv[])
                             for ( i = 0 ; i < 15 ; i++) {
                             if ( x < 0) { marioActuel = mario[DROITE]; DeplacePlayer(GAUCHE, 1, ecran, carte);  }
                             else { DeplacePlayer(DROITE, 1, ecran, carte);   }
-                            AfficheNiveau(position, ecran, carte, level);
-                            if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-                            if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-                            if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-                            if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-                            if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-                            if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-                            if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
-                            if (nbfireballs >= 1) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1); }
-                            if (nbfireballs >= 2) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2); }
-                            if (nbfireballs >= 3) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3); }
-                            if (nbfireballs >= 4) { SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4); }
-                            if ( weather >= 1 ) SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-                            SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
-                            SDL_Flip(ecran); /* On met à jour l'affichage */
+                            DrawScreen1();
                             }
                             } //Fin Gauche
 
@@ -4006,7 +2770,7 @@ int main(int argc, char *argv[])
             //S'il y a collision et si l'item existe :
              if (abs(x) < 30 && abs(y) < 30) {
                 if ( item1.itemExiste == 1)
-                { item1.itemExiste = 0; FSOUND_PlaySound(FSOUND_FREE, item_sound);
+                { item1.itemExiste = 0; Mix_PlayChannel(-1, item_sound, 0);
                 if ( item1.itemType == 1 ) { coeur++;  if ( coeur > coeurmax) coeur = coeurmax; }
                 if ( item1.itemType == 2 ) { money += (rand() % (20 - 1 + 1)) + 1;   }
                 if ( item1.itemType == 3 ) { potion++;   }
@@ -4060,7 +2824,7 @@ int main(int argc, char *argv[])
     //Gestion de la santé
     if (coeur == 1) {
     if (tempsSante + 500 < SDL_GetTicks()) {
-        tempsSante = SDL_GetTicks(); FSOUND_PlaySound(FSOUND_FREE, LowHealth);
+        tempsSante = SDL_GetTicks(); Mix_PlayChannel(-1, LowHealth, 0);
     }  }
     if (coeur < 0) coeur = 0;
 
@@ -4068,37 +2832,32 @@ int main(int argc, char *argv[])
     if ( coeur <= 0 ) {
         if ( potion >= 1)
         { potion--; coeur = coeurmax;
-        FSOUND_PlaySound(FSOUND_FREE, potion_sound); }
+        Mix_PlayChannel(-1, potion_sound, 0); }
 
         else {
-                freeMusic();
-                loadSong("sons/musique0.mp3");
+                loadSong(0);
 
                 game_over( ecran, &coeur, &continuer, &potion, &coeurmax, &money, &level, &power, &boss, &key, &baton );
                 chargerNiveau(carte, level);
                 chargerDataNiveau (level);
                 AfficheNiveau(position, ecran, carte, level);
-                positionMario.x = ecran->w / 2 - 35 / 2;
-                positionMario.y = ecran->h / 2 - 35 / 2;
+                positionMario.x = orig_width / 2 - 35 / 2;
+                positionMario.y = orig_height / 2 - 35 / 2;
 
 
-                freeMusic();
-                char ch1[30] = "sons/musique";
-                char ch2[10] = "";
-                sprintf (ch2, "%d.mp3", musique);
-                loadSong(strcat(ch1, ch2));
+                loadSong(musique);
 
 
     } }
 
            // Affichage du fond (vie, etc...)
-    SDL_BlitSurface(fond, NULL, ecran, &positionFond);
+    BlitSprite(fond, ecran, &positionFond);
 
     if (coeur < 6) {
     for ( j = coeur - 1 ; j >= 0 ; j-- )
     { positionCoeur.x = 8 + (j * 26);
       positionCoeur.y = 433;
-      SDL_BlitSurface(coeurRouge, NULL, ecran, &positionCoeur); }
+      BlitSprite(coeurRouge, ecran, &positionCoeur); }
     }
 
     //S'il y a de 6 à 10 coeurs :
@@ -4106,11 +2865,11 @@ int main(int argc, char *argv[])
         for ( j = 4 ; j >= 0 ; j-- )
     { positionCoeur.x = 8 + (j * 26);
       positionCoeur.y = 433;
-      SDL_BlitSurface(coeurRouge, NULL, ecran, &positionCoeur); }
+      BlitSprite(coeurRouge, ecran, &positionCoeur); }
         for ( j = coeur - 6 ; j >= 0 ; j-- )
     { positionCoeur.x = 12 + (j * 26);
       positionCoeur.y = 433;
-      SDL_BlitSurface(coeurRouge, NULL, ecran, &positionCoeur); }
+      BlitSprite(coeurRouge, ecran, &positionCoeur); }
                 }
 
     //S'il y a de 11 à 15 coeurs :
@@ -4118,15 +2877,15 @@ int main(int argc, char *argv[])
         for ( j = 4 ; j >= 0 ; j-- )
     { positionCoeur.x = 8 + (j * 26);
       positionCoeur.y = 433;
-      SDL_BlitSurface(coeurRouge, NULL, ecran, &positionCoeur); }
+      BlitSprite(coeurRouge, ecran, &positionCoeur); }
         for ( j = 4 ; j >= 0 ; j-- )
     { positionCoeur.x = 12 + (j * 26);
       positionCoeur.y = 433;
-      SDL_BlitSurface(coeurRouge, NULL, ecran, &positionCoeur); }
+      BlitSprite(coeurRouge, ecran, &positionCoeur); }
         for ( j = coeur - 11 ; j >= 0 ; j-- )
     { positionCoeur.x = 16 + (j * 26);
       positionCoeur.y = 433;
-      SDL_BlitSurface(coeurRouge, NULL, ecran, &positionCoeur); }
+      BlitSprite(coeurRouge, ecran, &positionCoeur); }
                     }
 
 
@@ -4153,57 +2912,57 @@ int main(int argc, char *argv[])
     if ( power == 1 ) puiss_epeeActuel = puiss_epee[0];
     else if ( power == 2 ) puiss_epeeActuel = puiss_epee[1];
     else if ( power == 3 ) puiss_epeeActuel = puiss_epee[2];
-    SDL_BlitSurface(puiss_epeeActuel, NULL, ecran, &positionPuiss_epee);
+    BlitSprite(puiss_epeeActuel, ecran, &positionPuiss_epee);
     // Affichage baton de feu
     if (baton == 1)
     { SDL_Rect positionFirestick;
     positionFirestick.x = 192;
     positionFirestick.y = 431;
-    SDL_BlitSurface(firestick, NULL, ecran, &positionFirestick); }
+    BlitSprite(firestick, ecran, &positionFirestick); }
 
 
     //Affichage items s'ils existent
    if ( item1.itemExiste == 1 ) {
-        if ( item1.itemType == 1) SDL_BlitSurface(item[0], NULL, ecran, &item1.positionItem);
-        if ( item1.itemType == 2) SDL_BlitSurface(item[1], NULL, ecran, &item1.positionItem);
-        if ( item1.itemType == 3) SDL_BlitSurface(item[2], NULL, ecran, &item1.positionItem);
-        if ( item1.itemType == 4) SDL_BlitSurface(item[3], NULL, ecran, &item1.positionItem);
+        if ( item1.itemType == 1) BlitSprite(item[0], ecran, &item1.positionItem);
+        if ( item1.itemType == 2) BlitSprite(item[1], ecran, &item1.positionItem);
+        if ( item1.itemType == 3) BlitSprite(item[2], ecran, &item1.positionItem);
+        if ( item1.itemType == 4) BlitSprite(item[3], ecran, &item1.positionItem);
         }
 
 
 
 
     //Affichage ennemis si vivants
-    if (ennemi1vivant == 1) { SDL_BlitSurface(ennemi1Actuel, NULL, ecran, &positionEnnemi1); }
-    if (ennemi2vivant == 1) { SDL_BlitSurface(ennemi2Actuel, NULL, ecran, &positionEnnemi2); }
-    if (ennemi3vivant == 1) { SDL_BlitSurface(ennemi3Actuel, NULL, ecran, &positionEnnemi3); }
-    if (ennemi4vivant == 1) { SDL_BlitSurface(ennemi4Actuel, NULL, ecran, &positionEnnemi4); }
-    if (ennemi5vivant == 1) { SDL_BlitSurface(ennemi5Actuel, NULL, ecran, &positionEnnemi5); }
-    if (bossvivant == 1) { if ( boss < bossaction ) { SDL_BlitSurface(bossActuel, NULL, ecran, &positionBoss); } }
-    if ( nbfireballs >= 1 ) SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball1);
-    if ( nbfireballs >= 2 ) SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball2);
-    if ( nbfireballs >= 3 ) SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball3);
-    if ( nbfireballs >= 4 ) SDL_BlitSurface(fireballActuel, NULL, ecran, &positionFireball4);
-    if (pnj1vivant == 1) { SDL_BlitSurface(pnj1Actuel, NULL, ecran, &positionPnj1); }
-    if (pnj2vivant == 1) { SDL_BlitSurface(pnj2Actuel, NULL, ecran, &positionPnj2); }
+    if (ennemi1vivant == 1) { BlitSprite(ennemi1Actuel, ecran, &positionEnnemi1); }
+    if (ennemi2vivant == 1) { BlitSprite(ennemi2Actuel, ecran, &positionEnnemi2); }
+    if (ennemi3vivant == 1) { BlitSprite(ennemi3Actuel, ecran, &positionEnnemi3); }
+    if (ennemi4vivant == 1) { BlitSprite(ennemi4Actuel, ecran, &positionEnnemi4); }
+    if (ennemi5vivant == 1) { BlitSprite(ennemi5Actuel, ecran, &positionEnnemi5); }
+    if (bossvivant == 1) { if ( boss < bossaction ) { BlitSprite(bossActuel, ecran, &positionBoss); } }
+    if ( nbfireballs >= 1 ) BlitSprite(fireballActuel, ecran, &positionFireball1);
+    if ( nbfireballs >= 2 ) BlitSprite(fireballActuel, ecran, &positionFireball2);
+    if ( nbfireballs >= 3 ) BlitSprite(fireballActuel, ecran, &positionFireball3);
+    if ( nbfireballs >= 4 ) BlitSprite(fireballActuel, ecran, &positionFireball4);
+    if (pnj1vivant == 1) { BlitSprite(pnj1Actuel, ecran, &positionPnj1); }
+    if (pnj2vivant == 1) { BlitSprite(pnj2Actuel, ecran, &positionPnj2); }
 
     //Affichage boule de feu du baton de feu
     if ( baton == 1)
     {
         if (baton_used == 1)
         {
-            SDL_BlitSurface(baton_img, NULL, ecran, &PositionBaton);
+            BlitSprite(baton_img, ecran, &PositionBaton);
         }
     }
 
 
-    SDL_BlitSurface(marioActuel, NULL, ecran, &positionMario); /* On place mario à sa nouvelle position */
+    BlitSprite(marioActuel, ecran, &positionMario); /* On place mario à sa nouvelle position */
 
     //Pluie
-    if ( weather >= 1 ) { SDL_BlitSurface(tempsActuel, NULL, ecran, &positionPluie);
-        if ( tempsMusiquePluie + 6000 < SDL_GetTicks() ) { FSOUND_PlaySound(FSOUND_FREE, rain); tempsMusiquePluie = SDL_GetTicks(); } }
+    if ( weather >= 1 ) { BlitSprite(tempsActuel, ecran, &positionPluie);
+        if ( tempsMusiquePluie + 6000 < SDL_GetTicks() ) { Mix_PlayChannel(-1, rain, 0); tempsMusiquePluie = SDL_GetTicks(); } }
 
-    SDL_Flip(ecran); /* On met à jour l'affichage */
+    FlipScreen(); /* On met à jour l'affichage */
 
 
     //Pour avoir 60 fps : il faut un tour de boucle tous les 16ms (16.6 exactement)
@@ -4230,81 +2989,72 @@ else SDL_Delay(1);
 
     freeTileset();
 
-    for (i = 0 ; i < 11 ; i++)
+    for (i = 0 ; i < 16 ; i++)
        { SDL_FreeSurface(mario[i]); }
-    SDL_FreeSurface(marioActuel);
 
-    for (i = 0 ; i < 7 ; i++)
+    for (i = 0 ; i < 8 ; i++)
        { SDL_FreeSurface(ennemi1[i]); }
-    SDL_FreeSurface(ennemi1Actuel);
 
-    for (i = 0 ; i < 7 ; i++)
+    for (i = 0 ; i < 8 ; i++)
        { SDL_FreeSurface(ennemi2[i]); }
-    SDL_FreeSurface(ennemi2Actuel);
 
-    for (i = 0 ; i < 7 ; i++)
+    for (i = 0 ; i < 8 ; i++)
        { SDL_FreeSurface(ennemi3[i]); }
-    SDL_FreeSurface(ennemi3Actuel);
 
-    for (i = 0 ; i < 7 ; i++)
+    for (i = 0 ; i < 8 ; i++)
        { SDL_FreeSurface(ennemi4[i]); }
-    SDL_FreeSurface(ennemi4Actuel);
 
-    for (i = 0 ; i < 7 ; i++)
+    for (i = 0 ; i < 8 ; i++)
        { SDL_FreeSurface(ennemi5[i]); }
-    SDL_FreeSurface(ennemi5Actuel);
 
-    for (i = 0 ; i < 7 ; i++)
+    for (i = 0 ; i < 8 ; i++)
        { SDL_FreeSurface(pnj1[i]); }
-    SDL_FreeSurface(pnj1Actuel);
 
     SDL_FreeSurface(pnj2);
-    SDL_FreeSurface(pnj2Actuel);
 
     for (i = 0 ; i < 2 ; i++)
        { SDL_FreeSurface(bossPic[i]); }
     for (i = 0 ; i < 2 ; i++)
        { SDL_FreeSurface(fireball[i]); }
-    SDL_FreeSurface(bossActuel);
-    SDL_FreeSurface(fireballActuel);
 
-    for (i = 0 ; i < 3 ; i++)
+    for (i = 0 ; i < 4 ; i++)
        { SDL_FreeSurface(item[i]); }
 
-    SDL_FreeSurface(temps[0]);
-    SDL_FreeSurface(temps[1]);
-    SDL_FreeSurface(temps[2]);
-    SDL_FreeSurface(temps[3]);
-    SDL_FreeSurface(tempsActuel);
+    for (i = 0 ; i < 4 ; i++)
+       { SDL_FreeSurface(temps[i]); }
     SDL_FreeSurface(orage);
 
-    SDL_FreeSurface(puiss_epee[0]);
-    SDL_FreeSurface(puiss_epee[1]);
-    SDL_FreeSurface(puiss_epee[2]);
+    for (i = 0 ; i < 3 ; i++)
+       { SDL_FreeSurface(puiss_epee[i]); }
 
     SDL_FreeSurface(baton_img);
 
 
+    Mix_HaltChannel(-1);
+
     /* On libère les sons et on ferme FMOD */
-    FSOUND_Sample_Free(sword);
-    FSOUND_Sample_Free(ah);
-    FSOUND_Sample_Free(hurt);
-    FSOUND_Sample_Free(ehit);
-    FSOUND_Sample_Free(ekill);
-    FSOUND_Sample_Free(LowHealth);
-    FSOUND_Sample_Free(item_sound);
-    FSOUND_Sample_Free(fanfare);
-    FSOUND_Sample_Free(dragondies);
-    FSOUND_Sample_Free(dragonhit);
-    FSOUND_Sample_Free(dragonstart);
-    FSOUND_Sample_Free(rain);
-    FSOUND_Sample_Free(potion_sound);
+    Mix_FreeChunk(sword);
+    Mix_FreeChunk(ah);
+    Mix_FreeChunk(hurt);
+    Mix_FreeChunk(ehit);
+    Mix_FreeChunk(ekill);
+    Mix_FreeChunk(LowHealth);
+    Mix_FreeChunk(item_sound);
+    Mix_FreeChunk(fanfare);
+    Mix_FreeChunk(dragondies);
+    Mix_FreeChunk(dragonhit);
+    Mix_FreeChunk(dragonstart);
+    Mix_FreeChunk(rain);
+    Mix_FreeChunk(potion_sound);
 
 
-    FMUSIC_FreeSong(musiqueJouee);
+    freeMusic();
 
+#if SDL_VERSIONNUM(SDL_MIXER_MAJOR_VERSION, SDL_MIXER_MINOR_VERSION, SDL_MIXER_PATCHLEVEL) >= SDL_VERSIONNUM(1, 2, 10)
+    while (Mix_Init(0)) Mix_Quit();
+#endif
 
-    FSOUND_Close();
+    Mix_CloseAudio();
 
     TTF_CloseFont(police);
     TTF_Quit();

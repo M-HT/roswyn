@@ -3,11 +3,12 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <SDL.h>
-#include <SDL_image.h>
-#include <SDL_ttf.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#include <SDL/SDL_ttf.h>
 #include "constantes.h"
 #include "fichiers.h"
+#include "jeu.h"
 
 
 
@@ -58,6 +59,100 @@
     extern SDL_Rect positionMario;
     extern int power; //Puissance de l'epee
     extern int boss;
+
+
+static int coffreSize, switchSize;
+static char *coffreData, *switchData;
+
+int readNumber(FILE *fichier, int length)
+{
+    int i, caractereLu, result;
+
+    result = 0;
+    for (i = 0; i < length; i++)
+    {
+        if (i != 0) result *= 10;
+        caractereLu = fgetc(fichier);
+        switch (caractereLu)
+        {
+            case '0':
+                result += 0;
+                break;
+            case '1':
+                result += 1;
+                break;
+            case '2':
+                result += 2;
+                break;
+            case '3':
+                result += 3;
+                break;
+            case '4':
+                result += 4;
+                break;
+            case '5':
+                result += 5;
+                break;
+            case '6':
+                result += 6;
+                break;
+            case '7':
+                result += 7;
+                break;
+            case '8':
+                result += 8;
+                break;
+            case '9':
+                result += 9;
+                break;
+        }
+    }
+
+    return result;
+}
+
+int readSmallInteger(FILE *fichier, int maxvalue)
+{
+    int caractereLu, result;
+
+    result = 0;
+    caractereLu = fgetc(fichier);
+    switch (caractereLu)
+    {
+        case '0':
+            if (maxvalue >= 0) result = 0;
+            break;
+        case '1':
+            if (maxvalue >= 1) result = 1;
+            break;
+        case '2':
+            if (maxvalue >= 2) result = 2;
+            break;
+        case '3':
+            if (maxvalue >= 3) result = 3;
+            break;
+        case '4':
+            if (maxvalue >= 4) result = 4;
+            break;
+        case '5':
+            if (maxvalue >= 5) result = 5;
+            break;
+        case '6':
+            if (maxvalue >= 6) result = 6;
+            break;
+        case '7':
+            if (maxvalue >= 7) result = 7;
+            break;
+        case '8':
+            if (maxvalue >= 8) result = 8;
+            break;
+        case '9':
+            if (maxvalue >= 9) result = 9;
+            break;
+    }
+
+    return result;
+}
 
 
 int chargerNiveau(int niveau[][NB_BLOCS_HAUTEUR], int level)
@@ -347,8 +442,7 @@ int chargerDataNiveau(int level)
     initFball = 1;
 
     FILE* fichier = NULL;
-    int i = 0, j = 0, caractereLu = 0;
-    int a = 0, b = 0, c = 0;
+    int caractereLu = 0;
 
     warpHaut = 0;
     warpBas = 0;
@@ -369,1600 +463,154 @@ int chargerDataNiveau(int level)
         level--;
     }
 
-for (j = 1 ; j < 5 ; j++) {
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            if (j == 1) warpHaut = (a * 100) + (b * 10) + c;
-            if (j == 2) warpBas = (a * 100) + (b * 10) + c;
-            if (j == 3) warpGauche = (a * 100) + (b * 10) + c;
-            if (j == 4) warpDroite = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-                }
+    warpHaut = readNumber(fichier, 3);
+    warpBas = readNumber(fichier, 3);
+    warpGauche = readNumber(fichier, 3);
+    warpDroite = readNumber(fichier, 3);
 
     //On lit ensuite les infos sur ennemi1
     //Est-il vivant sur cette map ?
-    caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       ennemi1vivant = 0;
-                    break;
-                case '1':
-                       ennemi1vivant = 1;
-                    break;
-            }
+    ennemi1vivant = readSmallInteger(fichier, 1);
 
     //Combien a-t-il de PV ???
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      ennemi1life = 0;
-                    break;
-                case '1':
-                      ennemi1life = 1;
-                    break;
-                case '2':
-                       ennemi1life = 2;
-                    break;
-                case '3':
-                       ennemi1life = 3;
-                    break;
-                case '4':
-                       ennemi1life = 4;
-                    break;
-                case '5':
-                       ennemi1life = 5;
-                    break;
-                case '6':
-                       ennemi1life = 6;
-                    break;
-                case '7':
-                       ennemi1life = 7;
-                    break;
-                case '8':
-                       ennemi1life = 8;
-                    break;
-                case '9':
-                       ennemi1life = 9;
-                    break;
-                           }
+    ennemi1life = readNumber(fichier, 1);
 
-        //Ou est-il situe ??? (mm technique que precedemment)
-for (j = 1 ; j < 3 ; j++) {
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            if (j == 1) positionEnnemi1.x = (a * 100) + (b * 10) + c;
-            if (j == 2) positionEnnemi1.y = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-                }
+    //Ou est-il situe ??? (mm technique que precedemment)
+    positionEnnemi1.x = readNumber(fichier, 3);
+    positionEnnemi1.y = readNumber(fichier, 3);
 
 
     //Idem pour ennemi2
-    caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       ennemi2vivant = 0;
-                    break;
-                case '1':
-                       ennemi2vivant = 1;
-                    break;
-            }
+    ennemi2vivant = readSmallInteger(fichier, 1);
 
     //Combien a-t-il de PV ???
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      ennemi2life = 0;
-                    break;
-                case '1':
-                      ennemi2life = 1;
-                    break;
-                case '2':
-                       ennemi2life = 2;
-                    break;
-                case '3':
-                       ennemi2life = 3;
-                    break;
-                case '4':
-                       ennemi2life = 4;
-                    break;
-                case '5':
-                       ennemi2life = 5;
-                    break;
-                case '6':
-                       ennemi2life = 6;
-                    break;
-                case '7':
-                       ennemi2life = 7;
-                    break;
-                case '8':
-                       ennemi2life = 8;
-                    break;
-                case '9':
-                       ennemi2life = 9;
-                    break;
-                           }
+    ennemi2life = readNumber(fichier, 1);
 
-        //Ou est-il situe ??? (mm technique que precedemment)
-for (j = 1 ; j < 3 ; j++) {
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            if (j == 1) positionEnnemi2.x = (a * 100) + (b * 10) + c;
-            if (j == 2) positionEnnemi2.y = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-                }
+    //Ou est-il situe ??? (mm technique que precedemment)
+    positionEnnemi2.x = readNumber(fichier, 3);
+    positionEnnemi2.y = readNumber(fichier, 3);
 
       //Idem pour ennemi3
-    caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       ennemi3vivant = 0;
-                    break;
-                case '1':
-                       ennemi3vivant = 1;
-                    break;
-            }
+    ennemi3vivant = readSmallInteger(fichier, 1);
 
     //Combien a-t-il de PV ???
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      ennemi3life = 0;
-                    break;
-                case '1':
-                      ennemi3life = 1;
-                    break;
-                case '2':
-                       ennemi3life = 2;
-                    break;
-                case '3':
-                       ennemi3life = 3;
-                    break;
-                case '4':
-                       ennemi3life = 4;
-                    break;
-                case '5':
-                       ennemi3life = 5;
-                    break;
-                case '6':
-                       ennemi3life = 6;
-                    break;
-                case '7':
-                       ennemi3life = 7;
-                    break;
-                case '8':
-                       ennemi3life = 8;
-                    break;
-                case '9':
-                       ennemi3life = 9;
-                    break;
-                           }
+    ennemi3life = readNumber(fichier, 1);
 
-        //Ou est-il situe ??? (mm technique que precedemment)
-for (j = 1 ; j < 3 ; j++) {
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            if (j == 1) positionEnnemi3.x = (a * 100) + (b * 10) + c;
-            if (j == 2) positionEnnemi3.y = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-                }
+    //Ou est-il situe ??? (mm technique que precedemment)
+    positionEnnemi3.x = readNumber(fichier, 3);
+    positionEnnemi3.y = readNumber(fichier, 3);
 
       //Idem pour ennemi4
-    caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       ennemi4vivant = 0;
-                    break;
-                case '1':
-                       ennemi4vivant = 1;
-                    break;
-            }
+    ennemi4vivant = readSmallInteger(fichier, 1);
 
     //Combien a-t-il de PV ???
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      ennemi4life = 0;
-                    break;
-                case '1':
-                      ennemi4life = 1;
-                    break;
-                case '2':
-                       ennemi4life = 2;
-                    break;
-                case '3':
-                       ennemi4life = 3;
-                    break;
-                case '4':
-                       ennemi4life = 4;
-                    break;
-                case '5':
-                       ennemi4life = 5;
-                    break;
-                case '6':
-                       ennemi4life = 6;
-                    break;
-                case '7':
-                       ennemi4life = 7;
-                    break;
-                case '8':
-                       ennemi4life = 8;
-                    break;
-                case '9':
-                       ennemi4life = 9;
-                    break;
-                           }
+    ennemi4life = readNumber(fichier, 1);
 
-        //Ou est-il situe ??? (mm technique que precedemment)
-for (j = 1 ; j < 3 ; j++) {
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            if (j == 1) positionEnnemi4.x = (a * 100) + (b * 10) + c;
-            if (j == 2) positionEnnemi4.y = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-                }
+    //Ou est-il situe ??? (mm technique que precedemment)
+    positionEnnemi4.x = readNumber(fichier, 3);
+    positionEnnemi4.y = readNumber(fichier, 3);
 
       //Idem pour ennemi5
-    caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       ennemi5vivant = 0;
-                    break;
-                case '1':
-                       ennemi5vivant = 1;
-                    break;
-            }
+    ennemi5vivant = readSmallInteger(fichier, 1);
 
     //Combien a-t-il de PV ???
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      ennemi5life = 0;
-                    break;
-                case '1':
-                      ennemi5life = 1;
-                    break;
-                case '2':
-                       ennemi5life = 2;
-                    break;
-                case '3':
-                       ennemi5life = 3;
-                    break;
-                case '4':
-                       ennemi5life = 4;
-                    break;
-                case '5':
-                       ennemi5life = 5;
-                    break;
-                case '6':
-                       ennemi5life = 6;
-                    break;
-                case '7':
-                       ennemi5life = 7;
-                    break;
-                case '8':
-                       ennemi5life = 8;
-                    break;
-                case '9':
-                       ennemi5life = 9;
-                    break;
-                           }
+    ennemi5life = readNumber(fichier, 1);
 
-        //Ou est-il situe ??? (mm technique que precedemment)
-for (j = 1 ; j < 3 ; j++) {
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            if (j == 1) positionEnnemi5.x = (a * 100) + (b * 10) + c;
-            if (j == 2) positionEnnemi5.y = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-                }
+    //Ou est-il situe ??? (mm technique que precedemment)
+    positionEnnemi5.x = readNumber(fichier, 3);
+    positionEnnemi5.y = readNumber(fichier, 3);
 
        //PNJ 1
-    caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       pnj1vivant = 0;
-                    break;
-                case '1':
-                       pnj1vivant = 1;
-                    break;
-            }
+    pnj1vivant = readSmallInteger(fichier, 1);
 
     //Que fait-il (0 = rien)
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      pnj1action = 0;
-                    break;
-                case '1':
-                      pnj1action = 1;
-                    break;
-                case '2':
-                       pnj1action = 2;
-                    break;
-                case '3':
-                       pnj1action = 3;
-                    break;
-                case '4':
-                       pnj1action = 4;
-                    break;
-                case '5':
-                       pnj1action = 5;
-                    break;
-                case '6':
-                       pnj1action = 6;
-                    break;
-                case '7':
-                       pnj1action = 7;
-                    break;
-                case '8':
-                       pnj1action = 8;
-                    break;
-                case '9':
-                       pnj1action = 9;
-                    break;
-                           }
+    pnj1action = readNumber(fichier, 1);
 
-        //Ou est-il situe ??? (mm technique que precedemment)
-for (j = 1 ; j < 3 ; j++) {
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            if (j == 1) positionPnj1.x = (a * 100) + (b * 10) + c;
-            if (j == 2) positionPnj1.y = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-                }
+    //Ou est-il situe ??? (mm technique que precedemment)
+    positionPnj1.x = readNumber(fichier, 3);
+    positionPnj1.y = readNumber(fichier, 3);
 
 
       //PNJ 2
-    caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       pnj2vivant = 0;
-                    break;
-                case '1':
-                       pnj2vivant = 1;
-                    break;
-            }
+    pnj2vivant = readSmallInteger(fichier, 1);
 
     //Que fait-il (0 = rien)
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      pnj2action = 0;
-                    break;
-                case '1':
-                      pnj2action = 1;
-                    break;
-                case '2':
-                       pnj2action = 2;
-                    break;
-                case '3':
-                       pnj2action = 3;
-                    break;
-                case '4':
-                       pnj2action = 4;
-                    break;
-                case '5':
-                       pnj2action = 5;
-                    break;
-                case '6':
-                       pnj2action = 6;
-                    break;
-                case '7':
-                       pnj2action = 7;
-                    break;
-                case '8':
-                       pnj2action = 8;
-                    break;
-                case '9':
-                       pnj2action = 9;
-                    break;
-                           }
+    pnj2action = readNumber(fichier, 1);
 
-        //Ou est-il situe ??? (mm technique que precedemment)
-for (j = 1 ; j < 3 ; j++) {
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            if (j == 1) positionPnj2.x = (a * 100) + (b * 10) + c;
-            if (j == 2) positionPnj2.y = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-                }
+    //Ou est-il situe ??? (mm technique que precedemment)
+    positionPnj2.x = readNumber(fichier, 3);
+    positionPnj2.y = readNumber(fichier, 3);
 
             //Boss
-    caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       bossvivant = 0;
-                    break;
-                case '1':
-                       bossvivant = 1;
-                    break;
-            }
+    bossvivant = readSmallInteger(fichier, 1);
 
     //PV
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      bosslife = 0;
-                    break;
-                case '1':
-                      bosslife = 1;
-                    break;
-                case '2':
-                       bosslife = 2;
-                    break;
-                case '3':
-                       bosslife = 3;
-                    break;
-                case '4':
-                       bosslife = 4;
-                    break;
-                case '5':
-                       bosslife = 5;
-                    break;
-                case '6':
-                       bosslife = 6;
-                    break;
-                case '7':
-                       bosslife = 7;
-                    break;
-                case '8':
-                       bosslife = 8;
-                    break;
-                case '9':
-                       bosslife = 9;
-                    break;
-                           }
+    bosslife = readNumber(fichier, 1);
 
-        //Que fait-il (numero du boss)
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '1':
-                      bossaction = 1;
-                    break;
-                case '2':
-                       bossaction = 2;
-                    break;
-                case '3':
-                       bossaction = 3;
-                    break;
-                case '4':
-                       bossaction = 4;
-                    break;
-                case '5':
-                       bossaction = 5;
-                    break;
-                case '6':
-                       bossaction = 6;
-                    break;
-                case '7':
-                       bossaction = 7;
-                    break;
-                case '8':
-                       bossaction = 8;
-                    break;
-                case '9':
-                       bossaction = 9;
-                    break;
+    //Que fait-il (numero du boss)
+    bossaction = readNumber(fichier, 1);
 
-                           }
-
-        //Ou est-il situe ??? (mm technique que precedemment)
-for (j = 1 ; j < 3 ; j++) {
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            if (j == 1) positionBoss.x = (a * 100) + (b * 10) + c;
-            if (j == 2) positionBoss.y = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-                }
+    //Ou est-il situe ??? (mm technique que precedemment)
+    positionBoss.x = readNumber(fichier, 3);
+    positionBoss.y = readNumber(fichier, 3);
 
 
   //**************Gestion items laisses*************
 
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      itemLaisse = 0;
-                    break;
-                case '1':
-                      itemLaisse = 1;
-                    break;
-                case '2':
-                       itemLaisse = 2;
-                    break;
-                case '3':
-                       itemLaisse = 3;
-                    break;
-
-                           }
+    itemLaisse = readSmallInteger(fichier, 3);
 
  //**************Gestion musique*************
 
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      musique = 0;
-                    break;
-                case '1':
-                      musique = 1;
-                    break;
-                case '2':
-                       musique = 2;
-                    break;
-                case '3':
-                       musique = 3;
-                    break;
-                case '4':
-                       musique = 4;
-                    break;
-                case '5':
-                       musique = 5;
-                    break;
-                case '6':
-                       musique = 6;
-                    break;
-                case '7':
-                       musique = 7;
-                    break;
-                case '8':
-                       musique = 8;
-                    break;
-                case '9':
-                       musique = 9;
-                    break;
-                           }
+    musique = readNumber(fichier, 1);
 
 
  //**************Gestion type d'ennemis affichés*************
 
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      ennemiType = 0;
-                    break;
-                case '1':
-                      ennemiType = 1;
-                    break;
-                case '2':
-                       ennemiType = 2;
-                    break;
-                case '3':
-                       ennemiType = 3;
-                    break;
-                case '4':
-                       ennemiType = 4;
-                    break;
-                case '5':
-                       ennemiType = 5;
-                    break;
-                case '6':
-                       ennemiType = 6;
-                    break;
-                case '7':
-                       ennemiType = 7;
-                    break;
-                case '8':
-                       ennemiType = 8;
-                    break;
-                case '9':
-                       ennemiType = 9;
-                    break;
-                           }
+    ennemiType = readNumber(fichier, 1);
 
 
 //***********************Gestion fireballs****************
 
 
-        caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      nbfireballs = 0;
-                    break;
-                case '1':
-                      nbfireballs = 1;
-                    break;
-                case '2':
-                       nbfireballs = 2;
-                    break;
-                case '3':
-                       nbfireballs = 3;
-                    break;
-                case '4':
-                       nbfireballs = 4;
-                    break;
-                case '5':
-                       nbfireballs = 5;
-                    break;
-                case '6':
-                       nbfireballs = 6;
-                    break;
-                case '7':
-                       nbfireballs = 7;
-                    break;
-                case '8':
-                       nbfireballs = 8;
-                    break;
-                case '9':
-                       nbfireballs = 9;
-                    break;
-                           }
+    nbfireballs = readNumber(fichier, 1);
 
-        //Ou sont-elles situees ?
-for (j = 1 ; j < 3 ; j++) {
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            if (j == 1) positionFireball1.x = (a * 100) + (b * 10) + c;
-            if (j == 2) positionFireball1.y = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-                }
+    //Ou sont-elles situees ?
+    positionFireball1.x = readNumber(fichier, 3);
+    positionFireball1.y = readNumber(fichier, 3);
 
     //gestion weather
-    caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       weather = 0;
-                    break;
-                case '1':
-                       weather = 1;
-                    break;
-                case '2':
-                       weather = 2;
-                    break;
-            }
+    weather = readSmallInteger(fichier, 2);
 
        //Gestion warpZone
-    caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       warpZone = 0;
-                    break;
-                case '1':
-                       warpZone = 1;
-                    break;
-            }
+    warpZone = readSmallInteger(fichier, 1);
 
 
   //Valeur de wlevel
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            wlevel = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
+    wlevel = readNumber(fichier, 3);
 
 
 
-        //Ou est-elle situee ?
-for (j = 1 ; j < 3 ; j++) {
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            if (j == 1) positionWarp.x = (a * 100) + (b * 10) + c;
-            if (j == 2) positionWarp.y = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
-                }
+    //Ou est-elle situee ?
+    positionWarp.x = readNumber(fichier, 3);
+    positionWarp.y = readNumber(fichier, 3);
 
 
     //Valeur de dialogue1
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            dialogue1 = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
+    dialogue1 = readNumber(fichier, 3);
 
  //Valeur de dialogue2
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            dialogue2 = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
+    dialogue2 = readNumber(fichier, 3);
 
  //Valeur de dialogue3
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            dialogue3 = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
+    dialogue3 = readNumber(fichier, 3);
 
 
   //Valeur de lswitch
-    for (i = 1 ; i < 4 ; i++) {
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                       if (i == 1) a = 0;
-                       if (i == 2) b = 0;
-                       if (i == 3) c = 0;
-                    break;
-                case '1':
-                       if (i == 1) a = 1;
-                       if (i == 2) b = 1;
-                       if (i == 3) c = 1;
-                    break;
-                case '2':
-                       if (i == 1) a = 2;
-                       if (i == 2) b = 2;
-                       if (i == 3) c = 2;
-                    break;
-                case '3':
-                       if (i == 1) a = 3;
-                       if (i == 2) b = 3;
-                       if (i == 3) c = 3;
-                    break;
-                case '4':
-                       if (i == 1) a = 4;
-                       if (i == 2) b = 4;
-                       if (i == 3) c = 4;
-                    break;
-                case '5':
-                       if (i == 1) a = 5;
-                       if (i == 2) b = 5;
-                       if (i == 3) c = 5;
-                    break;
-                case '6':
-                       if (i == 1) a = 6;
-                       if (i == 2) b = 6;
-                       if (i == 3) c = 6;
-                    break;
-                case '7':
-                       if (i == 1) a = 7;
-                       if (i == 2) b = 7;
-                       if (i == 3) c = 7;
-                    break;
-                case '8':
-                       if (i == 1) a = 8;
-                       if (i == 2) b = 8;
-                       if (i == 3) c = 8;
-                    break;
-                case '9':
-                       if (i == 1) a = 9;
-                       if (i == 2) b = 9;
-                       if (i == 3) c = 9;
-                    break;
-                           } }
-            lswitch = (a * 100) + (b * 10) + c;
-            a = 0; b = 0; c = 0;
+    lswitch = readNumber(fichier, 3);
 
     //Valeur de coffre
 
-       caractereLu = fgetc(fichier);
-       switch (caractereLu)
-            {
-                case '0':
-                      coffre = 0;
-                    break;
-                case '1':
-                      coffre = 1;
-                    break;
-                case '2':
-                       coffre = 2;
-                    break;
-                case '3':
-                       coffre = 3;
-                    break;
-                case '4':
-                       coffre = 4;
-                    break;
-                case '5':
-                       coffre = 5;
-                    break;
-                case '6':
-                       coffre = 6;
-                    break;
-
-                           }
+    coffre = readSmallInteger(fichier, 6);
 
 
     fclose(fichier);
@@ -1975,153 +623,137 @@ for (j = 1 ; j < 3 ; j++) {
 
 
 
+int readCoffres(FILE *fichier)
+{
+    return (fread(coffreData, 1, coffreSize, fichier) == coffreSize)?1:0;
+}
+
+int writeCoffres(FILE *fichier)
+{
+    return (fwrite(coffreData, 1, coffreSize, fichier) == coffreSize)?1:0;
+}
+
+int readSwitchs(FILE *fichier)
+{
+    return (fread(switchData, 1, switchSize, fichier) == switchSize)?1:0;
+}
+
+int writeSwitchs(FILE *fichier)
+{
+    return (fwrite(switchData, 1, switchSize, fichier) == switchSize)?1:0;
+}
+
 int InitCoffres ( )
- {
+{
 
-    FILE* fichier = NULL;
-    int i = 0;
+    FILE* fichier;
+    int i;
 
-    fichier = fopen("coffres.lvl", "r+");
-    if (fichier == NULL)
+    fichier = fopen("coffres.lvl", "r");
+    if (fichier != NULL)
+    {
+        fseek(fichier, 0, SEEK_END);
+        coffreSize = ftell(fichier);
+        fseek(fichier, 0, SEEK_SET);
+        if (coffreSize < 1024) coffreSize = 1024;
+    }
+    else
+    {
+        coffreSize = 1024;
+    }
+
+    coffreData = (char *) malloc(coffreSize);
+    if (coffreData == NULL)
+    {
+        if (fichier != NULL) fclose(fichier);
         return 0;
+    }
+
+    if (fichier != NULL)
+    {
+        readCoffres(fichier);
+    }
 
      //On ecrit 999 * 1 pour activer chaque coffre de chaque level
 
     for ( i = 0 ; i <= 999 ; i++ )
-    { fprintf(fichier, "1"); }
+    { coffreData[i] = '1'; }
 
-    fclose(fichier);
-
-return 0;
-
-    }
+    return 1;
+}
 
 
 int InitSwitchs ( )
- {
+{
 
-    FILE* fichier = NULL;
-    int i = 0;
+    FILE* fichier;
+    int i;
 
-    fichier = fopen("switchs.lvl", "r+");
-    if (fichier == NULL)
+    fichier = fopen("switchs.lvl", "r");
+    if (fichier != NULL)
+    {
+        fseek(fichier, 0, SEEK_END);
+        switchSize = ftell(fichier);
+        fseek(fichier, 0, SEEK_SET);
+        if (switchSize < 1024) switchSize = 1024;
+    }
+    else
+    {
+        switchSize = 1024;
+    }
+
+    switchData = (char *) malloc(switchSize);
+    if (switchData == NULL)
+    {
+        if (fichier != NULL) fclose(fichier);
         return 0;
+    }
+
+    if (fichier != NULL)
+    {
+        readSwitchs(fichier);
+
+        fclose(fichier);
+    }
 
      //On ecrit 999 * 1 pour activer chaque coffre de chaque level
 
     for ( i = 0 ; i <= 999 ; i++ )
-    { fprintf(fichier, "1"); }
+    { switchData[i] = '1'; }
 
-    fclose(fichier);
-
-return 0;
-
-    }
+    return 1;
+}
 
 
 int ValeurCoffre( int niveau )
 {
-
-    FILE* fichier = NULL;
-    int caractereLu = 0;
-
-    fichier = fopen("coffres.lvl", "r");
-    if (fichier == NULL)
-        return 0;
-
-    //Puis on recherche le coffre correspondant au level
-    while (niveau > 0)
-    {
-    caractereLu = fgetc(fichier);
-    niveau--;
-    }
-
-    fseek(fichier, 0, SEEK_CUR);
-    caractereLu = fgetc(fichier);
-    if ( caractereLu == '0' ) { fclose(fichier); return 0; }
-    else { fclose(fichier); return 1; }
-
+    return (coffreData[niveau] == '0')?0:1;
 }
 
 
 
 int OuvreCoffre( int niveau )
 {
+    coffreData[niveau] = '0';
 
-    FILE* fichier = NULL;
-    int caractereLu = 0;
-
-    fichier = fopen("coffres.lvl", "r+");
-    if (fichier == NULL)
-        return 0;
-
-    //Puis on recherche le coffre correspondant au level
-    while (niveau > 0)
-    {
-    caractereLu = fgetc(fichier);
-    niveau--;
-    }
-
-     fseek(fichier, 0, SEEK_CUR);
-     fprintf(fichier, "0");
-
-
-    fclose(fichier);
     return 1;
-
 }
 
 
 int ValeurSwitch ( int level )
 {
-
-    FILE* fichier = NULL;
-    int caractereLu = 0;
-
-    fichier = fopen("switchs.lvl", "r");
-    if (fichier == NULL)
-        return 0;
-
-    //Puis on recherche le switch correspondant au level : lswitch
-    while (level > 0)
-    {
-    caractereLu = fgetc(fichier);
-    level--;
-    }
-
-    fseek(fichier, 0, SEEK_CUR);
-    caractereLu = fgetc(fichier);
-    if ( caractereLu == '0' ) { fclose(fichier); return 0; }
-    else { fclose(fichier); return 1; }
-
+    return (switchData[level] == '0')?0:1;
 }
 
 
 
 int OuvreSwitch ( )
 {
+    switchData[lswitch] = '0';
+    // bug ???
+    lswitch = 0;
 
-    FILE* fichier = NULL;
-    int caractereLu = 0;
-
-    fichier = fopen("switchs.lvl", "r+");
-    if (fichier == NULL)
-        return 0;
-
-    //Puis on recherche le coffre correspondant au level
-    while (lswitch > 0)
-    {
-    caractereLu = fgetc(fichier);
-    lswitch--;
-    }
-
-     fseek(fichier, 0, SEEK_CUR);
-     fprintf(fichier, "0");
-
-
-    fclose(fichier);
     return 1;
-
 }
 
 
