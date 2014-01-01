@@ -774,7 +774,15 @@ SDL_Rect pos;
        pos.y = 0;
 
 SDL_BlitSurface(titre, NULL, ecran, &pos);
-
+#if defined(PANDORA)
+    SDL_Color textcolor = {255, 255, 255};
+    SDL_Rect pos2;
+       pos2.x = 0;
+       pos2.y = 1;
+    SDL_Surface *text2 = NULL;
+    text2 = TTF_RenderText_Blended(police, "Entry for the Alive & Kicking Coding Competition 2013/2014.", textcolor);
+    BlitSprite(text2, ecran, &pos2);
+#endif
 //On affiche
     FlipScreen();
 
@@ -830,12 +838,18 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
                         if (continuer)
                         {
                             SDL_BlitSurface(titre, NULL, ecran, &pos);
+#if defined(PANDORA)
+                            BlitSprite(text2, ecran, &pos2);
+#endif
 
                         //On affiche
                             FlipScreen();
                         }
                         else
                         {
+#if defined(PANDORA)
+                            SDL_FreeSurface(text2);
+#endif
                             SDL_FreeSurface(titre);
                         }
                     }
