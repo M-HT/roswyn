@@ -78,6 +78,7 @@
 
     extern int orig_width, orig_height;
 
+    extern void ClearKeys(void);
 
 void FlipScreen(void)
 {
@@ -609,7 +610,16 @@ return 0;
 
 }
 
-
+static void rtrim_eol(char *str)
+{
+    int i;
+    i = strlen(str);
+    while ((i > 0) && ((str[i - 1] == '\n') || (str[i - 1] == '\r')))
+    {
+        str[i - 1] = 0;
+        i--;
+    }
+}
 
 int AfficheDialogues (SDL_Surface *ecran, TTF_Font *police, int dialogue)
 {
@@ -667,14 +677,14 @@ int AfficheDialogues (SDL_Surface *ecran, TTF_Font *police, int dialogue)
 
 
    //On lit les trois lignes du fichier
-   fgets(chaine1, 55, fichier);
-   chaine1[strlen(chaine1) - 1] = '\0';
-   fgets(chaine2, 55, fichier);
-   chaine2[strlen(chaine2) - 1] = '\0';
-   fgets(chaine3, 55, fichier);
-   chaine3[strlen(chaine3) - 1] = '\0';
-   fgets(chaine4, 55, fichier);
-   chaine4[strlen(chaine4) - 1] = '\0';
+   fgets(chaine1, 57, fichier);
+   rtrim_eol(chaine1);
+   fgets(chaine2, 57, fichier);
+   rtrim_eol(chaine2);
+   fgets(chaine3, 57, fichier);
+   rtrim_eol(chaine3);
+   fgets(chaine4, 57, fichier);
+   rtrim_eol(chaine4);
 
    SDL_Surface *texte1 = NULL, *texte2 = NULL, *texte3 = NULL, *texte4 = NULL,*fond = NULL;
    fond = loadScreenImage("fond/dialog.bmp");
@@ -694,7 +704,9 @@ int AfficheDialogues (SDL_Surface *ecran, TTF_Font *police, int dialogue)
 
     //SDL_Delay (3000);
 
-    SDL_EnableKeyRepeat(0, 0);
+    //SDL_EnableKeyRepeat(0, 0);
+
+    ClearKeys();
 
     while (continuer)
 {
@@ -742,7 +754,7 @@ int AfficheDialogues (SDL_Surface *ecran, TTF_Font *police, int dialogue)
     }
 
     fclose(fichier);
-    SDL_EnableKeyRepeat(10, 10);
+    //SDL_EnableKeyRepeat(10, 10);
     return 0 ;
 }
 
@@ -766,6 +778,7 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
 //On affiche
     FlipScreen();
 
+    ClearKeys();
 
 
     while (continuer)
@@ -781,7 +794,7 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
         if ( timer + 500 < SDL_GetTicks() )
         {
 
-                    if (input.quit)
+                    if (input.quit || input.escape)
                     {
                         input.timer = SDL_GetTicks();
                         SDL_FreeSurface(titre);
@@ -859,6 +872,7 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
 //On affiche
     FlipScreen();
 
+    ClearKeys();
 
     while (continuer2)
 {
@@ -925,6 +939,8 @@ int credits ( SDL_Surface *ecran )
 
     FlipScreen();
 
+    ClearKeys();
+
     while (1)
     {
 
@@ -973,6 +989,7 @@ BlitSprite(shop, ecran, &pos);
 //On affiche
     FlipScreen();
 
+    ClearKeys();
 
     while (continuer2)
 {
@@ -1035,6 +1052,12 @@ BlitSprite(shop, ecran, &pos);
 
                         case SDLK_ESCAPE:
                         case SDLK_SPACE:
+#if defined(PANDORA)
+                        case SDLK_HOME:
+                        case SDLK_END:
+                        case SDLK_PAGEDOWN:
+                        case SDLK_PAGEUP:
+#endif
                         case SDLK_RETURN:
                         case SDLK_KP_ENTER:
                         continuer2 = 0;
@@ -1080,6 +1103,7 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
 //On affiche
     FlipScreen();
 
+    ClearKeys();
 
     while (continuer2)
 {
@@ -1100,6 +1124,12 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
                         case SDLK_RETURN:
                         case SDLK_KP_ENTER:
                         case SDLK_SPACE:
+#if defined(PANDORA)
+                        case SDLK_HOME:
+                        case SDLK_END:
+                        case SDLK_PAGEDOWN:
+                        case SDLK_PAGEUP:
+#endif
                         *continuer = 0;
                         continuer2 = 0;
                         break;
@@ -2127,6 +2157,8 @@ int pauseGame(void)
     drawString(text, 165, 200, police);
     FlipScreen();
     pauseSong();
+
+    ClearKeys();
 
     while (1)
     {

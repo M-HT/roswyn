@@ -80,6 +80,8 @@
 
     int orig_width = LARGEUR_FENETRE, orig_height = HAUTEUR_FENETRE;
 
+    int keys_pressed[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 
 SDL_Rect position;
 SDL_Rect positionPluie;
@@ -89,7 +91,7 @@ SDL_Surface *ennemi1Actuel, *ennemi2Actuel, *ennemi3Actuel, *ennemi4Actuel, *enn
 SDL_Surface *pnj1Actuel, *pnj2Actuel;
 SDL_Surface *fireballActuel, *tempsActuel, *marioActuel;
 
-void DrawScreen1(void)
+static void DrawScreen1(void)
 {
     AfficheNiveau(position, ecran, carte, level);
     if (ennemi1vivant == 1) { BlitSprite(ennemi1Actuel, ecran, &positionEnnemi1); }
@@ -108,6 +110,14 @@ void DrawScreen1(void)
     FlipScreen(); /* On met à jour l'affichage */
 }
 
+
+void ClearKeys(void)
+{
+    keys_pressed[0] = keys_pressed[1] = keys_pressed[2] =
+    keys_pressed[3] = keys_pressed[4] = keys_pressed[5] =
+    keys_pressed[6] = keys_pressed[7] = keys_pressed[8] =
+    keys_pressed[9] = 0;
+}
 
 int main(int argc, char *argv[])
 {
@@ -280,6 +290,9 @@ int main(int argc, char *argv[])
 
     //23 dec 09 : Pour le joystick
      //Stocke le numéro du joystick
+#ifdef GP2X
+    SDL_JoystickOpen(0);
+#elif !defined(PANDORA)
     if ( SDL_NumJoysticks() > 0 )
     {
         SDL_JoystickEventState(SDL_ENABLE);
@@ -290,6 +303,7 @@ int main(int argc, char *argv[])
     printf("----> %d axes\n", SDL_JoystickNumAxes(joystick));
     printf("----> %d trackballs\n", SDL_JoystickNumBalls(joystick));
     printf("----> %d chapeaux\n", SDL_JoystickNumHats(joystick));
+#endif
 
 
     //Gestion du profil et du plein ecran
@@ -485,8 +499,9 @@ int main(int argc, char *argv[])
 
 
         //A placer avent la boucle principale pour permettre de maintenir une touche enfoncee
-        SDL_EnableKeyRepeat(KR, KR); //(duree avant declenchement, delai en ms)
+        //SDL_EnableKeyRepeat(KR, KR); //(duree avant declenchement, delai en ms)
 
+    int arrow_pressed, space_pressed;
 
     //Boucle principale du programme pour deplacer Mario
     while (continuer)
@@ -564,11 +579,8 @@ int main(int argc, char *argv[])
             if (tempsboss + 300 < SDL_GetTicks()) bossfreeze = bossfreeze2 = 0;
 
 
-            int arrow_pressed, space_pressed, space_keydown;
 
-            arrow_pressed = space_pressed = space_keydown = 0;
-
-            if(SDL_PollEvent(&event))
+            while(SDL_PollEvent(&event))
 
             /* On teste l'input du joueur */
             switch(event.type)
@@ -584,27 +596,33 @@ int main(int argc, char *argv[])
                         {
                         case SDLK_UP: // Flèche haut anim complete : on teste les 2 tiles contre lesquels se trouve le perso et on met a jour l'animation selon la valeur d' animMario
                             arrow_pressed = 1;
-                            if (keystate[SDLK_SPACE]) space_pressed = 1;
+                            keys_pressed[8] = 1;
                             break;
 
                         case SDLK_DOWN: // Flèche bas anim idem
                             arrow_pressed = 2;
-                            if (keystate[SDLK_SPACE]) space_pressed = 1;
+                            keys_pressed[2] = 1;
                             break;
 
                         case SDLK_RIGHT: // Flèche droite anim idem
                             arrow_pressed = 3;
-                            if (keystate[SDLK_SPACE]) space_pressed = 1;
+                            keys_pressed[6] = 1;
                             break;
 
                         case SDLK_LEFT: // Flèche gauche anim idem
                             arrow_pressed = 4;
-                            if (keystate[SDLK_SPACE]) space_pressed = 1;
+                            keys_pressed[4] = 1;
                             break;
 
                         //Attaque avec spacebar pendant la duree tempsAnim, on met animMario à 3
                         case SDLK_SPACE:
-                            space_keydown = 1;
+#if defined(PANDORA)
+                        case SDLK_HOME:
+                        case SDLK_END:
+                        case SDLK_PAGEDOWN:
+                        case SDLK_PAGEUP:
+#endif
+                            keys_pressed[0] = 1;
                             break;
 
                         case SDLK_RETURN:
@@ -666,75 +684,214 @@ int main(int argc, char *argv[])
                             break;
 
                             } //Fin de SDL_KEYDOWN
+                        break;
 
-                        case SDL_KEYUP:
+                    case SDL_KEYUP:
 
-                            switch(event.key.keysym.sym)
-                            {
-                                case SDLK_F3: // Gestion du mode 60fps - à desactiver sur les petites configs
-
-                                if (keytime + 500 < SDL_GetTicks())
-                                {
-                                    if ( fps == 1 )
-                                        {
-                                            fps = 0;
-                                            AfficheDialogues (ecran, police, 985);
-                                        }
-                                    else
-                                        {
-                                            fps = 1;
-                                            AfficheDialogues (ecran, police, 984);
-                                        }
-                                    keytime = SDL_GetTicks();
-                                }
+                        switch(event.key.keysym.sym)
+                        {
+                            case SDLK_UP:
+                                keys_pressed[8] = 0;
                                 break;
 
+                            case SDLK_DOWN:
+                                keys_pressed[2] = 0;
+                                break;
 
-                        default:
+                            case SDLK_RIGHT:
+                                keys_pressed[6] = 0;
+                                break;
+
+                            case SDLK_LEFT:
+                                keys_pressed[4] = 0;
+                                break;
+
+                            case SDLK_SPACE:
+#if defined(PANDORA)
+                            case SDLK_HOME:
+                            case SDLK_END:
+                            case SDLK_PAGEDOWN:
+                            case SDLK_PAGEUP:
+#endif
+                                keys_pressed[0] = 0;
+                                break;
+
+#if !defined(GP2X) && !defined(PANDORA)
+                            case SDLK_F3: // Gestion du mode 60fps - à desactiver sur les petites configs
+
+                            if (keytime + 500 < SDL_GetTicks())
+                            {
+                                if ( fps == 1 )
+                                    {
+                                        fps = 0;
+                                        AfficheDialogues (ecran, police, 985);
+                                    }
+                                else
+                                    {
+                                        fps = 1;
+                                        AfficheDialogues (ecran, police, 984);
+                                    }
+                                keytime = SDL_GetTicks();
+                            }
+                            break;
+#endif
+
+                            default:
                             break;
 
-                            }
+                        }
+                        break;
 
+#if !defined(GP2X) && !defined(PANDORA)
                 //23dec09 : gestion du joystick (en parallèle du clavier)
-                if ( SDL_NumJoysticks() > 0 )
+                if ( joystick != NULL )
                     { case SDL_JOYBUTTONDOWN:
                     if ( event.jbutton.button == 0 ) /* Touche A équivalent de SPACEBAR */
                     {
-                        space_keydown = 1;
+                        keys_pressed[0] = 1;
+                    }
+                    break;
+
+                    case SDL_JOYBUTTONUP:
+                    if ( event.jbutton.button == 0 ) /* Touche A équivalent de SPACEBAR */
+                    {
+                        keys_pressed[0] = 0;
                     }
                     break;
 
                     case SDL_JOYHATMOTION:  /* Handle Hat Motion */
                         switch ( event.jhat.value )
                         {
+                        case SDL_HAT_CENTERED:
+                            ClearKeys();
+                            break;
+
                         case SDL_HAT_UP : // Flèche haut anim complete : on teste les 2 tiles contre lesquels se trouve le perso et on met a jour l'animation selon la valeur d' animMario
-                        case SDL_HAT_RIGHTUP :
-                        case SDL_HAT_LEFTUP :
+                            ClearKeys();
+
                             arrow_pressed = 1;
-                            if (SDL_JoystickGetButton (joystick, 0)) space_pressed = 1;
+                            keys_pressed[8] = 1;
+                            break;
+
+                        case SDL_HAT_RIGHTUP :
+                            ClearKeys();
+
+                            keys_pressed[9] = 1;
+                            break;
+
+                        case SDL_HAT_LEFTUP :
+                            ClearKeys();
+
+                            keys_pressed[7] = 1;
                             break;
 
                         case SDL_HAT_DOWN: // Flèche bas anim idem
-                        case SDL_HAT_RIGHTDOWN :
-                        case SDL_HAT_LEFTDOWN :
+                            ClearKeys();
+
                             arrow_pressed = 2;
-                            if (SDL_JoystickGetButton (joystick, 0)) space_pressed = 1;
+                            keys_pressed[2] = 1;
+                            break;
+
+                        case SDL_HAT_RIGHTDOWN :
+                            ClearKeys();
+
+                            keys_pressed[3] = 1;
+                            break;
+
+                        case SDL_HAT_LEFTDOWN :
+                            ClearKeys();
+
+                            keys_pressed[1] = 1;
                             break;
 
                         case SDL_HAT_RIGHT: // Flèche droite anim idem
+                            ClearKeys();
+
                             arrow_pressed = 3;
-                            if (SDL_JoystickGetButton (joystick, 0)) space_pressed = 1;
+                            keys_pressed[6] = 1;
                             break;
 
                         case SDL_HAT_LEFT: // Flèche gauche anim idem
+                            ClearKeys();
+
                             arrow_pressed = 4;
-                            if (SDL_JoystickGetButton (joystick, 0)) space_pressed = 1;
+                            keys_pressed[4] = 1;
                             break;
 
                     }
 
                 }
+#endif
                 }
+
+
+            space_pressed = (keys_pressed[0])?1:0;
+
+            switch(arrow_pressed)
+            {
+                case 1:
+                    if (keys_pressed[7] || keys_pressed[8] || keys_pressed[9]){
+                    } else if (keys_pressed[6] || keys_pressed[3]) {
+                        arrow_pressed = 3;
+                    } else if (keys_pressed[4] || keys_pressed[1]) {
+                        arrow_pressed = 4;
+                    } else if (keys_pressed[2]) {
+                        arrow_pressed = 2;
+                    } else {
+                        arrow_pressed = 0;
+                    }
+                    break;
+                case 2:
+                    if (keys_pressed[1] || keys_pressed[2] || keys_pressed[3]){
+                    } else if (keys_pressed[4] || keys_pressed[7]) {
+                        arrow_pressed = 4;
+                    } else if (keys_pressed[6] || keys_pressed[9]) {
+                        arrow_pressed = 3;
+                    } else if (keys_pressed[8]) {
+                        arrow_pressed = 1;
+                    } else {
+                        arrow_pressed = 0;
+                    }
+                    break;
+                case 3:
+                    if (keys_pressed[3] || keys_pressed[6] || keys_pressed[9]){
+                    } else if (keys_pressed[2] || keys_pressed[1]) {
+                        arrow_pressed = 2;
+                    } else if (keys_pressed[8] || keys_pressed[7]) {
+                        arrow_pressed = 1;
+                    } else if (keys_pressed[4]) {
+                        arrow_pressed = 4;
+                    } else {
+                        arrow_pressed = 0;
+                    }
+                    break;
+                case 4:
+                    if (keys_pressed[1] || keys_pressed[4] || keys_pressed[7]){
+                    } else if (keys_pressed[8] || keys_pressed[9]) {
+                        arrow_pressed = 1;
+                    } else if (keys_pressed[2] || keys_pressed[3]) {
+                        arrow_pressed = 2;
+                    } else if (keys_pressed[6]) {
+                        arrow_pressed = 3;
+                    } else {
+                        arrow_pressed = 0;
+                    }
+                    break;
+                default:
+                    if (keys_pressed[7] || keys_pressed[8] || keys_pressed[9]){
+                        arrow_pressed = 1;
+                    } else if (keys_pressed[1] || keys_pressed[2] || keys_pressed[3]) {
+                        arrow_pressed = 2;
+                    } else if (keys_pressed[6]) {
+                        arrow_pressed = 3;
+                    } else if (keys_pressed[4]) {
+                        arrow_pressed = 4;
+                    } else {
+                        arrow_pressed = 0;
+                    }
+                    break;
+            }
+
 
             switch(arrow_pressed)
             {
@@ -934,198 +1091,198 @@ int main(int argc, char *argv[])
                     break;
 
                 default:
-                    break;
-            }
-            switch (space_keydown)
-            {
-                case 1: // SDLK_SPACE
-                    if (marioActuel == mario[BAS]) { marioActuel = mario[EPEEBAS]; animMario = 3; }
-                    if (marioActuel == mario[HAUT]) { marioActuel = mario[EPEEHAUT]; animMario = 3; }
-                    if (marioActuel == mario[DROITE]) { marioActuel = mario[EPEEDROITE]; animMario = 3; }
-                    if (marioActuel == mario[GAUCHE]) { marioActuel = mario[EPEEGAUCHE]; animMario = 3; }
-                    if (marioActuel == mario[BAS2]) { marioActuel = mario[EPEEBAS2]; animMario = 3; }
-                    if (marioActuel == mario[HAUT2]) { marioActuel = mario[EPEEHAUT2]; animMario = 3; }
-                    if (marioActuel == mario[DROITE2]) { marioActuel = mario[EPEEDROITE2]; animMario = 3; }
-                    if (marioActuel == mario[GAUCHE2]) { marioActuel = mario[EPEEGAUCHE2]; animMario = 3; }
+                    switch (space_pressed)
+                    {
+                        case 1: // SDLK_SPACE
+                            if (marioActuel == mario[BAS]) { marioActuel = mario[EPEEBAS]; animMario = 3; }
+                            if (marioActuel == mario[HAUT]) { marioActuel = mario[EPEEHAUT]; animMario = 3; }
+                            if (marioActuel == mario[DROITE]) { marioActuel = mario[EPEEDROITE]; animMario = 3; }
+                            if (marioActuel == mario[GAUCHE]) { marioActuel = mario[EPEEGAUCHE]; animMario = 3; }
+                            if (marioActuel == mario[BAS2]) { marioActuel = mario[EPEEBAS2]; animMario = 3; }
+                            if (marioActuel == mario[HAUT2]) { marioActuel = mario[EPEEHAUT2]; animMario = 3; }
+                            if (marioActuel == mario[DROITE2]) { marioActuel = mario[EPEEDROITE2]; animMario = 3; }
+                            if (marioActuel == mario[GAUCHE2]) { marioActuel = mario[EPEEGAUCHE2]; animMario = 3; }
 
-                    //Test Epee Nv 3.  Rochers
-                    if ( power > 2 ) {
-                        if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
-                                { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
-                                { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                            }
-                        if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
-                                { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
-                                { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                            }
-                        if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                            { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 49)
-                                { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                              if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 49)
-                                { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                            }
-                        if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                            { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 49)
-                                { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                              if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 49)
-                                { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                            }
-                    } //Fin
-
-                    //Test epee puissance 2 - potiches
-                    if ( power > 1 ) {
-                        if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
-                                { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
-                                { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                            }
-                        if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
-                                { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
-                                { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                            }
-                        if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                            { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 50)
-                                { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                              if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 50)
-                                { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                            }
-                        if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                            { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 50)
-                                { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                              if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 50)
-                                { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
-                            }
-                    } //Fin
-
-                    //Test Coffres
-
-                        if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
-                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
-                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
-                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
-                            }
-                        if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
-                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
-                              if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
-                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
-                            }
-                        if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                            { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 46)
-                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
-                              if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 46)
-                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
-                            }
-                        if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                            { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 46)
-                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
-                              if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 46)
-                                { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
-                            }
-
-                        //Ouverture du coffre
-                        if (open == 1) {
-                            switch (coffre) {
-                                case 0 :
-                                money += 50;
-                                AfficheDialogues (ecran, police, 995);
-                                open = 0;
-                                break;
-
-                                case 1 :
-                                money += 100;
-                                AfficheDialogues (ecran, police, 994);
-                                open = 0;
-                                break;
-
-                                case 2 :
-                                money += 200;
-                                AfficheDialogues (ecran, police, 993);
-                                open = 0;
-                                break;
-
-                                case 3 :
-                                potion++;
-                                AfficheDialogues (ecran, police, 992);
-                                open = 0;
-                                break;
-
-                                case 4 :
-                                potion += 2;
-                                AfficheDialogues (ecran, police, 991);
-                                open = 0;
-                                break;
-
-                                case 5 :
-                                key++;
-                                AfficheDialogues (ecran, police, 990);
-                                open = 0;
-                                break;
-
-                                case 6 :
-                                coeur=++coeurmax;
-                                AfficheDialogues (ecran, police, 989);
-                                open = 0;
-                                break;
-                            }
-                        }
-
-
-                    //Test Switchs
-
-                        if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                            { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 48 || carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 48  )
-                                 { if ( ValeurSwitch(lswitch) == 1) { if (key > 0) { OuvreSwitch();
-                                Mix_PlayChannel(-1, fanfare, 0); if ( ValeurSwitch(lswitch) == 0) key--; break; }  } }
-                            }
-
-                    //Test baton de feu
-
-                        if ( baton == 1 ) //Si on a le baton de feu
-                        {
-                            if ( baton_used == 0) // Si on ne l'a pas utilisé
-                            {  //Suivant la direction de Roswyn ( Mario ? ;)
+                            //Test Epee Nv 3.  Rochers
+                            if ( power > 2 ) {
+                                if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
+                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
+                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
+                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                    }
                                 if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
-                                {
-                                    direction_baton = HAUT;
-                                    PositionBaton.x = positionMario.x + 7;
-                                    PositionBaton.y = positionMario.y + 7;
-                                }
+                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
+                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
+                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                    }
+                                if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
+                                    { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 49)
+                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                      if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 49)
+                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                    }
+                                if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
+                                    { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 49)
+                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                      if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 49)
+                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                    }
+                            } //Fin
+
+                            //Test epee puissance 2 - potiches
+                            if ( power > 1 ) {
+                                if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
+                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
+                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
+                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                    }
+                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
+                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
+                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
+                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                    }
+                                if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
+                                    { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 50)
+                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                      if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 50)
+                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                    }
+                                if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
+                                    { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 50)
+                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                      if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 50)
+                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                    }
+                            } //Fin
+
+                            //Test Coffres
 
                                 if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
-                                {
-                                    direction_baton = BAS;
-                                    PositionBaton.x = positionMario.x + 7;
-                                    PositionBaton.y = positionMario.y + 35;
-                                }
-
+                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                    }
+                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
+                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                      if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                    }
                                 if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
-                                {
-                                    direction_baton = DROITE;
-                                    PositionBaton.x = positionMario.x + 35;
-                                    PositionBaton.y = positionMario.y + 7;
-                                }
-
+                                    { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 46)
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                      if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 46)
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                    }
                                 if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
-                                {
-                                    direction_baton = GAUCHE;
-                                    PositionBaton.x = positionMario.x + 7;
-                                    PositionBaton.y = positionMario.y + 7;
+                                    { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 46)
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                      if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 46)
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                    }
+
+                                //Ouverture du coffre
+                                if (open == 1) {
+                                    switch (coffre) {
+                                        case 0 :
+                                        money += 50;
+                                        AfficheDialogues (ecran, police, 995);
+                                        open = 0;
+                                        break;
+
+                                        case 1 :
+                                        money += 100;
+                                        AfficheDialogues (ecran, police, 994);
+                                        open = 0;
+                                        break;
+
+                                        case 2 :
+                                        money += 200;
+                                        AfficheDialogues (ecran, police, 993);
+                                        open = 0;
+                                        break;
+
+                                        case 3 :
+                                        potion++;
+                                        AfficheDialogues (ecran, police, 992);
+                                        open = 0;
+                                        break;
+
+                                        case 4 :
+                                        potion += 2;
+                                        AfficheDialogues (ecran, police, 991);
+                                        open = 0;
+                                        break;
+
+                                        case 5 :
+                                        key++;
+                                        AfficheDialogues (ecran, police, 990);
+                                        open = 0;
+                                        break;
+
+                                        case 6 :
+                                        coeur=++coeurmax;
+                                        AfficheDialogues (ecran, police, 989);
+                                        open = 0;
+                                        break;
+                                    }
                                 }
 
-                                baton_used = 1;
-                            }
-                        }
-                    break;
-                default:
+
+                            //Test Switchs
+
+                                if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
+                                    { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 48 || carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 48  )
+                                         { if ( ValeurSwitch(lswitch) == 1) { if (key > 0) { OuvreSwitch();
+                                        Mix_PlayChannel(-1, fanfare, 0); if ( ValeurSwitch(lswitch) == 0) key--; break; }  } }
+                                    }
+
+                            //Test baton de feu
+
+                                if ( baton == 1 ) //Si on a le baton de feu
+                                {
+                                    if ( baton_used == 0) // Si on ne l'a pas utilisé
+                                    {  //Suivant la direction de Roswyn ( Mario ? ;)
+                                        if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
+                                        {
+                                            direction_baton = HAUT;
+                                            PositionBaton.x = positionMario.x + 7;
+                                            PositionBaton.y = positionMario.y + 7;
+                                        }
+
+                                        if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
+                                        {
+                                            direction_baton = BAS;
+                                            PositionBaton.x = positionMario.x + 7;
+                                            PositionBaton.y = positionMario.y + 35;
+                                        }
+
+                                        if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
+                                        {
+                                            direction_baton = DROITE;
+                                            PositionBaton.x = positionMario.x + 35;
+                                            PositionBaton.y = positionMario.y + 7;
+                                        }
+
+                                        if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
+                                        {
+                                            direction_baton = GAUCHE;
+                                            PositionBaton.x = positionMario.x + 7;
+                                            PositionBaton.y = positionMario.y + 7;
+                                        }
+
+                                        baton_used = 1;
+                                    }
+                                }
+                            break;
+                        default:
+                            break;
+                    }
                     break;
             }
 
@@ -2622,20 +2779,13 @@ int main(int argc, char *argv[])
             //1. S'il y a collision, on joue un son :
              if (abs(x) < 20 && abs(y) < 20) {
                 Mix_PlayChannel(-1, ehit, 0);
-                if (keystate[SDLK_SPACE])
+                if (space_pressed)
                 {
-                if ( pnj1action == 0)
-                AfficheDialogues (ecran, police, dialogue1);
-                else continuer = shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
+                    if ( pnj1action == 0)
+                    AfficheDialogues (ecran, police, dialogue1);
+                    else continuer = shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
                 }
-                else if ( SDL_JoystickGetButton(joystick, 0))
-                {
-                if ( pnj1action == 0)
-                AfficheDialogues (ecran, police, dialogue1);
-                else continuer = shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
-                }
-
-                }
+            }
 
 
             //2. S'il y a collision, on sépare les belligérants :
@@ -2697,13 +2847,7 @@ int main(int argc, char *argv[])
              if (abs(x) < 20 && abs(y) < 20) {
                 Mix_PlayChannel(-1, ehit, 0);
 
-                if (keystate[SDLK_SPACE])
-                {
-                if ( pnj2action == 0)
-                AfficheDialogues (ecran, police, dialogue2);
-                else continuer = shop ( ecran, police, &potion, &coeur, &coeurmax, &money, &level, &power, &boss, &key, &baton );
-                }
-                else if ( SDL_JoystickGetButton(joystick, 0))
+                if (space_pressed)
                 {
                 if ( pnj2action == 0)
                 AfficheDialogues (ecran, police, dialogue2);
