@@ -80,6 +80,10 @@
 
     extern void ClearKeys(void);
 
+#if defined(GP2X)
+    extern void Change_HW_Audio_Volume (int amount);
+#endif
+
 void FlipScreen(void)
 {
     SDL_Flip(ecran);
@@ -729,15 +733,42 @@ int AfficheDialogues (SDL_Surface *ecran, TTF_Font *police, int dialogue)
                 break;
 
             case SDL_JOYBUTTONDOWN:
-                    if ( event.jbutton.button == 0 )
-                    {
+#if defined(GP2X)
+                switch(event.jbutton.button)
+                {
+                case GP2X_BUTTON_SELECT:
+                    continuer = 0;
+                    event.type=0;
+                    break;
+                case GP2X_BUTTON_A:
+                case GP2X_BUTTON_B:
+                case GP2X_BUTTON_X:
+                case GP2X_BUTTON_Y:
+                    if (tempoTouche + 1000 < SDL_GetTicks()) {
+                        continuer = 0;
+                        tempoTouche = SDL_GetTicks();
+                        event.type=0; }
+                    else event.type=0;
+                    break;
+                case GP2X_BUTTON_VOLUP:
+                    Change_HW_Audio_Volume(4);
+                    break;
+                case GP2X_BUTTON_VOLDOWN:
+                    Change_HW_Audio_Volume(-4);
+                    break;
+
+                }
+#else
+                if ( event.jbutton.button == 0 )
+                {
                     if (tempoTouche + 1000 < SDL_GetTicks()) {
                     continuer = 0;
                     tempoTouche = SDL_GetTicks();
                     event.type=0; }
                     else event.type=0;
-                    break;
-                    }
+                }
+#endif
+                break;
         }
 
     }
@@ -927,6 +958,41 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
 
                         }
             break;
+#if defined(GP2X)
+            case SDL_JOYBUTTONDOWN:
+                switch(event.jbutton.button)
+                {
+                case GP2X_BUTTON_A:
+                    loadSavedGame(coeur, potion, coeurmax, money, level, power, boss, key, baton);
+                    continuer2 = 0;
+                    break;
+
+                case GP2X_BUTTON_Y:
+                    *continuer = 0;
+                    continuer2 = 0;
+                    break;
+
+                case GP2X_BUTTON_B:
+                    *coeur = 5;
+                    continuer2 = 0;
+                    break;
+
+                case GP2X_BUTTON_SELECT:
+                    *continuer = 0;
+                    continuer2 = 0;
+                    break;
+
+                case GP2X_BUTTON_VOLUP:
+                    Change_HW_Audio_Volume(4);
+                    break;
+
+                case GP2X_BUTTON_VOLDOWN:
+                    Change_HW_Audio_Volume(-4);
+                    break;
+
+                }
+            break;
+#endif
         }
 
     }
@@ -1021,6 +1087,7 @@ BlitSprite(shop, ecran, &pos);
                         {
                         case SDLK_KP1:
                         case SDLK_1:
+                    shop_1:
                         if (*money >= 30) { *money -= 30; *coeur=*coeurmax; AfficheDialogues (ecran, police, 988); }
                         else AfficheDialogues (ecran, police, 987);
                         continuer2 = 0;
@@ -1028,6 +1095,7 @@ BlitSprite(shop, ecran, &pos);
 
                         case SDLK_KP2:
                         case SDLK_2:
+                    shop_2:
                         fichier = fopen("save.lvl", "w+");
                         if (*level <= 9) fprintf(fichier, "00%d", *level);
                         else if (*level <= 99) fprintf(fichier, "0%d", *level);
@@ -1059,6 +1127,7 @@ BlitSprite(shop, ecran, &pos);
 
                         case SDLK_KP3:
                         case SDLK_3:
+                    shop_3:
                         if (*money >= 100) { *money -= 100; *potion+= 1; AfficheDialogues (ecran, police, 986); }
                         else AfficheDialogues (ecran, police, 987);
                         continuer2 = 0;
@@ -1086,11 +1155,42 @@ BlitSprite(shop, ecran, &pos);
             break;
 
             case SDL_JOYBUTTONDOWN:
-                    if ( event.jbutton.button == 0 )
-                    {
+#if defined(GP2X)
+                switch(event.jbutton.button)
+                {
+                case GP2X_BUTTON_A:
+                    goto shop_1;
+
+                case GP2X_BUTTON_Y:
+                    goto shop_2;
+
+                case GP2X_BUTTON_B:
+                    goto shop_3;
+
+                case GP2X_BUTTON_X:
                     continuer2 = 0;
                     break;
-                    }
+
+                case GP2X_BUTTON_SELECT:
+                    SDL_FreeSurface( shop );
+                    return 0;
+
+                case GP2X_BUTTON_VOLUP:
+                    Change_HW_Audio_Volume(4);
+                    break;
+
+                case GP2X_BUTTON_VOLDOWN:
+                    Change_HW_Audio_Volume(-4);
+                    break;
+
+                }
+#else
+                if ( event.jbutton.button == 0 )
+                {
+                continuer2 = 0;
+                }
+#endif
+                break;
         }
     }
 
@@ -1155,6 +1255,27 @@ SDL_BlitSurface(titre, NULL, ecran, &pos);
 
                         }
             break;
+#if defined(GP2X)
+            case SDL_JOYBUTTONDOWN:
+                switch(event.jbutton.button)
+                {
+                case GP2X_BUTTON_A:
+                case GP2X_BUTTON_Y:
+                case GP2X_BUTTON_B:
+                case GP2X_BUTTON_X:
+                case GP2X_BUTTON_SELECT:
+                    *continuer = 0;
+                    continuer2 = 0;
+                    break;
+                case GP2X_BUTTON_VOLUP:
+                    Change_HW_Audio_Volume(4);
+                    break;
+                case GP2X_BUTTON_VOLDOWN:
+                    Change_HW_Audio_Volume(-4);
+                    break;
+                }
+            break;
+#endif
         }
 
     }
@@ -1194,59 +1315,32 @@ FILE* fichier = NULL;
 
 #ifdef GP2X
 
-static void ResizeImage_32_RGB(uint32_t *src, uint16_t *dst, int srcwidth, int srcheight, int srcpitch, int dstwidth, int dstheight, int dstpitch)
+
+static void ResizeImage_32(SDL_Surface *srcimage, SDL_Surface *dstimage)
 {
-    unsigned int dwidth, dheight, xdiff, ydiff, xpos, ypos, xstart;
-    uint32_t *linesrc;
-    uint16_t *linedst;
+    unsigned int dwidth, dheight, xdiff, ydiff, xpos, ypos, xstart, srcpitch, dstpitch;
+    uint32_t *src, *dst, *linesrc, *linedst, alphavalue;
 
-#define SRC_RECT_WIDTH srcwidth
-#define SRC_RECT_HEIGHT srcheight
-#define SRC_RECT_X 0
-#define SRC_RECT_Y 0
-#define DST_RECT_WIDTH dstwidth
-#define DST_RECT_HEIGHT dstheight
-#define DST_RECT_X 0
-#define DST_RECT_Y 0
+    src = (uint32_t *) srcimage->pixels;
+    dst = (uint32_t *) dstimage->pixels;
 
-#define SRC_PITCH srcpitch
-#define DST_PITCH dstpitch
+    xstart = (srcimage->w > dstimage->w)?(65536 - ((dstimage->w << 16) / srcimage->w)):0;
+    ypos = (srcimage->h > dstimage->h)?(65536 - ((dstimage->h << 16) / srcimage->h)):0;
 
-//#define COPY_PIXEL(dstpix, a) { dstpix = ( (((a) & 0xf8) >> 3) | (((a) & 0xfc00) >> 5) | (((a) & 0xf80000) >> 8) ); }
-//#define INTERPOLATE_2_PIXELS_1_1(dstpix, a, b) { dstpix = ( (((((a) & 0xff) + ((b) & 0xff)) & 0x1f0) >> 4) | (((((a) & 0xff00) + ((b) & 0xff00)) & 0x1f800) >> 6) | (((((a) & 0xff0000) + ((b) & 0xff0000)) & 0x1f00000) >> 9) ); }
+    xdiff = (srcimage->w << 16) / dstimage->w;
+    ydiff = (srcimage->h << 16) / dstimage->h;
 
-//#define INTERPOLATE_4_PIXELS_1_1_1_1(dstpix, a, b, c, d) { dstpix = ( (((((a) & 0xff) + ((b) & 0xff) + ((c) & 0xff) + ((d) & 0xff)) & 0x3e0) >> 5) | (((((a) & 0xff00) + ((b) & 0xff00) + ((c) & 0xff00) + ((d) & 0xff00)) & 0x3f000) >> 7) | (((((a) & 0xff0000) + ((b) & 0xff0000) + ((c) & 0xff0000) + ((d) & 0xff0000)) & 0x3e00000) >> 10) ); }
+    srcpitch = srcimage->pitch;
+    dstpitch = dstimage->pitch;
 
-#define COPY_PIXEL(dstpix, a) { dstpix = ( (((a) & 0xf8) << 8) | (((a) & 0xfc00) >> 5) | (((a) & 0xf80000) >> 19) ); }
-#define INTERPOLATE_2_PIXELS_1_1(dstpix, a, b) { dstpix = ( (((((a) & 0xff) + ((b) & 0xff)) & 0x1f0) << 7) | (((((a) & 0xff00) + ((b) & 0xff00)) & 0x1f800) >> 6) | (((((a) & 0xff0000) + ((b) & 0xff0000)) & 0x1f00000) >> 20) ); }
+    alphavalue = srcimage->format->Amask;
 
-#define INTERPOLATE_4_PIXELS_1_1_1_1(dstpix, a, b, c, d) { dstpix = ( (((((a) & 0xff) + ((b) & 0xff) + ((c) & 0xff) + ((d) & 0xff)) & 0x3e0) << 6) | (((((a) & 0xff00) + ((b) & 0xff00) + ((c) & 0xff00) + ((d) & 0xff00)) & 0x3f000) >> 7) | (((((a) & 0xff0000) + ((b) & 0xff0000) + ((c) & 0xff0000) + ((d) & 0xff0000)) & 0x3e00000) >> 21) ); }
+#define NEXT_SRC_LINE ((uint32_t *) (((uintptr_t)linesrc) + srcpitch))
+#define COPY_PIXEL(dstpix, a) { dstpix = (a) | alphavalue; }
+#define INTERPOLATE_2_PIXELS_1_1(dstpix, a, b) { dstpix = (((((a) & 0xff00ff) + ((b) & 0xff00ff)) >> 1) & 0xff00ff) | (((((a) & 0xff00ff00) >> 1) + (((b) & 0xff00ff00) >> 1)) & 0xff00ff00) | alphavalue; }
+#define INTERPOLATE_4_PIXELS_1_1_1_1(dstpix, a, b, c, d) { dstpix = (((((a) & 0xff00ff) + ((b) & 0xff00ff) + ((c) & 0xff00ff) + ((d) & 0xff00ff)) >> 2) & 0xff00ff) | (((((a) & 0xff00ff00) >> 2) + (((b) & 0xff00ff00) >> 2) + (((c) & 0xff00ff00) >> 2) + (((d) & 0xff00ff00) >> 2)) & 0xff00ff00) | alphavalue; }
 
-    src = ((uint32_t *) (((uintptr_t)src) + SRC_RECT_Y * SRC_PITCH)) + SRC_RECT_X;
-    dst = ((uint16_t *) (((uintptr_t)dst) + DST_RECT_Y * DST_PITCH)) + DST_RECT_X;
-
-    if (SRC_RECT_WIDTH <= DST_RECT_WIDTH)
-    {
-        xstart = 0;
-    }
-    else
-    {
-        xstart = 65536 - ((DST_RECT_WIDTH << 16) / SRC_RECT_WIDTH);
-    }
-
-    if (SRC_RECT_HEIGHT <= DST_RECT_HEIGHT)
-    {
-        ypos = 0;
-    }
-    else
-    {
-        ypos = 65536 - ((DST_RECT_HEIGHT << 16) / SRC_RECT_HEIGHT);
-    }
-
-    xdiff = (SRC_RECT_WIDTH << 16) / DST_RECT_WIDTH;
-    ydiff = (SRC_RECT_HEIGHT << 16) / DST_RECT_HEIGHT;
-
-    for (dheight = DST_RECT_HEIGHT; dheight != 0; dheight--)
+    for (dheight = dstimage->h; dheight != 0; dheight--)
     {
         linesrc = src;
         linedst = dst;
@@ -1255,21 +1349,21 @@ static void ResizeImage_32_RGB(uint32_t *src, uint16_t *dst, int srcwidth, int s
         switch ((ypos >> 14) & 3)
         {
             case 3:
-                linesrc = (uint32_t *) (((uintptr_t)src) + SRC_PITCH);
+                linesrc = NEXT_SRC_LINE;
             case 0:
-                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                for (dwidth = dstimage->w; dwidth != 0; dwidth--)
                 {
                     switch ((xpos >> 14) & 3)
                     {
                         case 0:
-                            COPY_PIXEL(*linedst, linesrc[0]);
+                            COPY_PIXEL(*linedst, linesrc[0])
                             break;
                         case 1:
                         case 2:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], linesrc[1]);
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], linesrc[1])
                             break;
                         case 3:
-                            COPY_PIXEL(*linedst, linesrc[1]);
+                            COPY_PIXEL(*linedst, linesrc[1])
                             break;
                     }
 
@@ -1282,19 +1376,19 @@ static void ResizeImage_32_RGB(uint32_t *src, uint16_t *dst, int srcwidth, int s
                 break;
             case 1:
             case 2:
-                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                for (dwidth = dstimage->w; dwidth != 0; dwidth--)
                 {
                     switch ((xpos >> 14) & 3)
                     {
                         case 0:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[0]);
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], NEXT_SRC_LINE[0])
                             break;
                         case 1:
                         case 2:
-                            INTERPOLATE_4_PIXELS_1_1_1_1(*linedst, linesrc[0], linesrc[1], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[0], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[1]);
+                            INTERPOLATE_4_PIXELS_1_1_1_1(*linedst, linesrc[0], linesrc[1], NEXT_SRC_LINE[0], NEXT_SRC_LINE[1])
                             break;
                         case 3:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[1], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[1]);
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[1], NEXT_SRC_LINE[1])
                             break;
                     }
 
@@ -1309,82 +1403,41 @@ static void ResizeImage_32_RGB(uint32_t *src, uint16_t *dst, int srcwidth, int s
 
 
         ypos += ydiff;
-        src = (uint32_t *) (((uintptr_t)src) + (ypos >> 16) * SRC_PITCH);
+        src = (uint32_t *) (((uintptr_t)src) + (ypos >> 16) * srcpitch);
         ypos &= 0xffff;
 
-        dst = (uint16_t *) (((uintptr_t)dst) + DST_PITCH);
+        dst = (uint32_t *) (((uintptr_t)dst) + dstpitch);
     }
 
-#undef SRC_RECT_WIDTH
-#undef SRC_RECT_HEIGHT
-#undef SRC_RECT_X
-#undef SRC_RECT_Y
-#undef DST_RECT_WIDTH
-#undef DST_RECT_HEIGHT
-#undef DST_RECT_X
-#undef DST_RECT_Y
-
-#undef SRC_PITCH
-#undef DST_PITCH
-
+#undef NEXT_SRC_LINE
 #undef COPY_PIXEL
 #undef INTERPOLATE_2_PIXELS_1_1
-
 #undef INTERPOLATE_4_PIXELS_1_1_1_1
 }
 
-static void ResizeImage_24_RGB(uint8_t *src, uint16_t *dst, int srcwidth, int srcheight, int srcpitch, int dstwidth, int dstheight, int dstpitch)
+static void ResizeImage_24(SDL_Surface *srcimage, SDL_Surface *dstimage)
 {
-    unsigned int dwidth, dheight, xdiff, ydiff, xpos, ypos, xstart;
-    uint8_t *linesrc;
-    uint16_t *linedst;
+    unsigned int dwidth, dheight, xdiff, ydiff, xpos, ypos, xstart, srcpitch, dstpitch;
+    uint8_t *src, *dst, *linesrc, *linedst;
 
-#define SRC_RECT_WIDTH srcwidth
-#define SRC_RECT_HEIGHT srcheight
-#define SRC_RECT_X 0
-#define SRC_RECT_Y 0
-#define DST_RECT_WIDTH dstwidth
-#define DST_RECT_HEIGHT dstheight
-#define DST_RECT_X 0
-#define DST_RECT_Y 0
+    src = (uint8_t *) srcimage->pixels;
+    dst = (uint8_t *) dstimage->pixels;
 
-#define SRC_PITCH srcpitch
-#define DST_PITCH dstpitch
+    xstart = (srcimage->w > dstimage->w)?(65536 - ((dstimage->w << 16) / srcimage->w)):0;
+    ypos = (srcimage->h > dstimage->h)?(65536 - ((dstimage->h << 16) / srcimage->h)):0;
 
-#define RVAL(a) ((unsigned int)((a)[0]))
-#define GVAL(a) ((unsigned int)((a)[1]))
-#define BVAL(a) ((unsigned int)((a)[2]))
+    xdiff = (srcimage->w << 16) / dstimage->w;
+    ydiff = (srcimage->h << 16) / dstimage->h;
 
-#define COPY_PIXEL(dstpix, a) { dstpix = ( ((RVAL(a) & 0xf8) << 8) | ((GVAL(a) & 0xfc) << 3) | ((BVAL(a) & 0xf8) >> 3) ); }
-#define INTERPOLATE_2_PIXELS_1_1(dstpix, a, b) { dstpix = ( (((RVAL(a) + RVAL(b)) & 0x1f0) << 7) | (((GVAL(a) + GVAL(b)) & 0x1f8) << 2) | (((BVAL(a) + BVAL(b)) & 0x1f0) >> 4) ); }
+    srcpitch = srcimage->pitch;
+    dstpitch = dstimage->pitch;
 
-#define INTERPOLATE_4_PIXELS_1_1_1_1(dstpix, a, b, c, d) { dstpix = ( (((RVAL(a) + RVAL(b) + RVAL(c) + RVAL(d)) & 0x3e0) << 6) | (((GVAL(a) + GVAL(b) + GVAL(c) + GVAL(d)) & 0x3f0) << 1) | (((BVAL(a) + BVAL(b) + BVAL(c) + BVAL(d)) & 0x3e0) >> 5) ); }
+#define NEXT_SRC_LINE (linesrc + srcpitch)
+#define COPY_PIXEL(x, a) { x[0] = (a)[0]; x[1] = (a)[1]; x[2] = (a)[2]; }
+#define INTERPOLATE_2_PIXELS_1_1(x, a, b) { x[0] = (((uint32_t)((a)[0])) + ((uint32_t)((b)[0]))) >> 1; x[1] = (((uint32_t)((a)[1])) + ((uint32_t)((b)[1]))) >> 1; x[2] = (((uint32_t)((a)[2])) + ((uint32_t)((b)[2]))) >> 1; }
+#define INTERPOLATE_4_PIXELS_1_1_1_1(x, a, b, c, d) { x[0] = (((uint32_t)((a)[0])) + ((uint32_t)((b)[0])) + ((uint32_t)((c)[0])) + ((uint32_t)((d)[0]))) >> 2; x[1] = (((uint32_t)((a)[1])) + ((uint32_t)((b)[1])) + ((uint32_t)((c)[1])) + ((uint32_t)((d)[1]))) >> 2; x[2] = (((uint32_t)((a)[2])) + ((uint32_t)((b)[2])) + ((uint32_t)((c)[2])) + ((uint32_t)((d)[2]))) >> 2; }
 
-    src += ((SRC_RECT_Y * SRC_PITCH) + SRC_RECT_X);
-    dst = ((uint16_t *) (((uintptr_t)dst) + DST_RECT_Y * DST_PITCH)) + DST_RECT_X;
-
-    if (SRC_RECT_WIDTH <= DST_RECT_WIDTH)
-    {
-        xstart = 0;
-    }
-    else
-    {
-        xstart = 65536 - ((DST_RECT_WIDTH << 16) / SRC_RECT_WIDTH);
-    }
-
-    if (SRC_RECT_HEIGHT <= DST_RECT_HEIGHT)
-    {
-        ypos = 0;
-    }
-    else
-    {
-        ypos = 65536 - ((DST_RECT_HEIGHT << 16) / SRC_RECT_HEIGHT);
-    }
-
-    xdiff = (SRC_RECT_WIDTH << 16) / DST_RECT_WIDTH;
-    ydiff = (SRC_RECT_HEIGHT << 16) / DST_RECT_HEIGHT;
-
-    for (dheight = DST_RECT_HEIGHT; dheight != 0; dheight--)
+    for (dheight = dstimage->h; dheight != 0; dheight--)
     {
         linesrc = src;
         linedst = dst;
@@ -1393,21 +1446,21 @@ static void ResizeImage_24_RGB(uint8_t *src, uint16_t *dst, int srcwidth, int sr
         switch ((ypos >> 14) & 3)
         {
             case 3:
-                linesrc = src + SRC_PITCH;
+                linesrc = NEXT_SRC_LINE;
             case 0:
-                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                for (dwidth = dstimage->w; dwidth != 0; dwidth--)
                 {
                     switch ((xpos >> 14) & 3)
                     {
                         case 0:
-                            COPY_PIXEL(*linedst, linesrc);
+                            COPY_PIXEL(linedst, linesrc)
                             break;
                         case 1:
                         case 2:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc, linesrc + 3);
+                            INTERPOLATE_2_PIXELS_1_1(linedst, linesrc, linesrc + 3)
                             break;
                         case 3:
-                            COPY_PIXEL(*linedst, linesrc + 3);
+                            COPY_PIXEL(linedst, linesrc + 3)
                             break;
                     }
 
@@ -1415,24 +1468,24 @@ static void ResizeImage_24_RGB(uint8_t *src, uint16_t *dst, int srcwidth, int sr
                     linesrc += (xpos >> 16) * 3;
                     xpos &= 0xffff;
 
-                    linedst ++;
+                    linedst += 3;
                 }
                 break;
             case 1:
             case 2:
-                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                for (dwidth = dstimage->w; dwidth != 0; dwidth--)
                 {
                     switch ((xpos >> 14) & 3)
                     {
                         case 0:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc, linesrc + SRC_PITCH);
+                            INTERPOLATE_2_PIXELS_1_1(linedst, linesrc, NEXT_SRC_LINE)
                             break;
                         case 1:
                         case 2:
-                            INTERPOLATE_4_PIXELS_1_1_1_1(*linedst, linesrc, linesrc + 3, linesrc + SRC_PITCH, linesrc + SRC_PITCH + 3);
+                            INTERPOLATE_4_PIXELS_1_1_1_1(linedst, linesrc, linesrc + 3, NEXT_SRC_LINE, NEXT_SRC_LINE + 3)
                             break;
                         case 3:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc + 3, linesrc + SRC_PITCH + 3);
+                            INTERPOLATE_2_PIXELS_1_1(linedst, linesrc + 3, NEXT_SRC_LINE + 3)
                             break;
                     }
 
@@ -1440,287 +1493,104 @@ static void ResizeImage_24_RGB(uint8_t *src, uint16_t *dst, int srcwidth, int sr
                     linesrc += (xpos >> 16) * 3;
                     xpos &= 0xffff;
 
-                    linedst ++;
+                    linedst += 3;
                 }
                 break;
         }
 
 
         ypos += ydiff;
-        src += (ypos >> 16) * SRC_PITCH;
+        src += (ypos >> 16) * srcpitch;
         ypos &= 0xffff;
 
-        dst = (uint16_t *) (((uintptr_t)dst) + DST_PITCH);
+        dst += dstpitch;
     }
 
-#undef SRC_RECT_WIDTH
-#undef SRC_RECT_HEIGHT
-#undef SRC_RECT_X
-#undef SRC_RECT_Y
-#undef DST_RECT_WIDTH
-#undef DST_RECT_HEIGHT
-#undef DST_RECT_X
-#undef DST_RECT_Y
-
-#undef SRC_PITCH
-#undef DST_PITCH
-
-#undef RVAL
-#undef GVAL
-#undef BVAL
-
+#undef NEXT_SRC_LINE
 #undef COPY_PIXEL
 #undef INTERPOLATE_2_PIXELS_1_1
-
 #undef INTERPOLATE_4_PIXELS_1_1_1_1
 }
 
-static void ResizeImage_24_BGR(uint8_t *src, uint16_t *dst, int srcwidth, int srcheight, int srcpitch, int dstwidth, int dstheight, int dstpitch)
+static void ResizeTranspImage_32(SDL_Surface *srcimage, SDL_Surface *dstimage, uint32_t srckey)
 {
-    unsigned int dwidth, dheight, xdiff, ydiff, xpos, ypos, xstart;
-    uint8_t *linesrc;
-    uint16_t *linedst;
+    unsigned int dwidth, dheight, xdiff, ydiff, xpos, ypos, xstart, srcpitch, dstpitch;
+    uint32_t *src, *dst, *linesrc, *linedst, alphavalue;
 
-#define SRC_RECT_WIDTH srcwidth
-#define SRC_RECT_HEIGHT srcheight
-#define SRC_RECT_X 0
-#define SRC_RECT_Y 0
-#define DST_RECT_WIDTH dstwidth
-#define DST_RECT_HEIGHT dstheight
-#define DST_RECT_X 0
-#define DST_RECT_Y 0
+    src = (uint32_t *) srcimage->pixels;
+    dst = (uint32_t *) dstimage->pixels;
 
-#define SRC_PITCH srcpitch
-#define DST_PITCH dstpitch
+    xstart = (srcimage->w > dstimage->w)?(65536 - ((dstimage->w << 16) / srcimage->w)):0;
+    ypos = (srcimage->h > dstimage->h)?(65536 - ((dstimage->h << 16) / srcimage->h)):0;
 
-#define RVAL(a) ((unsigned int)((a)[2]))
-#define GVAL(a) ((unsigned int)((a)[1]))
-#define BVAL(a) ((unsigned int)((a)[0]))
+    xdiff = (srcimage->w << 16) / dstimage->w;
+    ydiff = (srcimage->h << 16) / dstimage->h;
 
-#define COPY_PIXEL(dstpix, a) { dstpix = ( ((RVAL(a) & 0xf8) << 8) | ((GVAL(a) & 0xfc) << 3) | ((BVAL(a) & 0xf8) >> 3) ); }
-#define INTERPOLATE_2_PIXELS_1_1(dstpix, a, b) { dstpix = ( (((RVAL(a) + RVAL(b)) & 0x1f0) << 7) | (((GVAL(a) + GVAL(b)) & 0x1f8) << 2) | (((BVAL(a) + BVAL(b)) & 0x1f0) >> 4) ); }
+    srcpitch = srcimage->pitch;
+    dstpitch = dstimage->pitch;
 
-#define INTERPOLATE_4_PIXELS_1_1_1_1(dstpix, a, b, c, d) { dstpix = ( (((RVAL(a) + RVAL(b) + RVAL(c) + RVAL(d)) & 0x3e0) << 6) | (((GVAL(a) + GVAL(b) + GVAL(c) + GVAL(d)) & 0x3f0) << 1) | (((BVAL(a) + BVAL(b) + BVAL(c) + BVAL(d)) & 0x3e0) >> 5) ); }
+    alphavalue = srcimage->format->Amask;
 
-    src += ((SRC_RECT_Y * SRC_PITCH) + SRC_RECT_X);
-    dst = ((uint16_t *) (((uintptr_t)dst) + DST_RECT_Y * DST_PITCH)) + DST_RECT_X;
-
-    if (SRC_RECT_WIDTH <= DST_RECT_WIDTH)
-    {
-        xstart = 0;
-    }
-    else
-    {
-        xstart = 65536 - ((DST_RECT_WIDTH << 16) / SRC_RECT_WIDTH);
-    }
-
-    if (SRC_RECT_HEIGHT <= DST_RECT_HEIGHT)
-    {
-        ypos = 0;
-    }
-    else
-    {
-        ypos = 65536 - ((DST_RECT_HEIGHT << 16) / SRC_RECT_HEIGHT);
-    }
-
-    xdiff = (SRC_RECT_WIDTH << 16) / DST_RECT_WIDTH;
-    ydiff = (SRC_RECT_HEIGHT << 16) / DST_RECT_HEIGHT;
-
-    for (dheight = DST_RECT_HEIGHT; dheight != 0; dheight--)
-    {
-        linesrc = src;
-        linedst = dst;
-        xpos = xstart;
-
-        switch ((ypos >> 14) & 3)
-        {
-            case 3:
-                linesrc = src + SRC_PITCH;
-            case 0:
-                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
-                {
-                    switch ((xpos >> 14) & 3)
-                    {
-                        case 0:
-                            COPY_PIXEL(*linedst, linesrc);
-                            break;
-                        case 1:
-                        case 2:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc, linesrc + 3);
-                            break;
-                        case 3:
-                            COPY_PIXEL(*linedst, linesrc + 3);
-                            break;
-                    }
-
-                    xpos += xdiff;
-                    linesrc += (xpos >> 16) * 3;
-                    xpos &= 0xffff;
-
-                    linedst ++;
-                }
-                break;
-            case 1:
-            case 2:
-                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
-                {
-                    switch ((xpos >> 14) & 3)
-                    {
-                        case 0:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc, linesrc + SRC_PITCH);
-                            break;
-                        case 1:
-                        case 2:
-                            INTERPOLATE_4_PIXELS_1_1_1_1(*linedst, linesrc, linesrc + 3, linesrc + SRC_PITCH, linesrc + SRC_PITCH + 3);
-                            break;
-                        case 3:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc + 3, linesrc + SRC_PITCH + 3);
-                            break;
-                    }
-
-                    xpos += xdiff;
-                    linesrc += (xpos >> 16) * 3;
-                    xpos &= 0xffff;
-
-                    linedst ++;
-                }
-                break;
-        }
-
-
-        ypos += ydiff;
-        src += (ypos >> 16) * SRC_PITCH;
-        ypos &= 0xffff;
-
-        dst = (uint16_t *) (((uintptr_t)dst) + DST_PITCH);
-    }
-
-#undef SRC_RECT_WIDTH
-#undef SRC_RECT_HEIGHT
-#undef SRC_RECT_X
-#undef SRC_RECT_Y
-#undef DST_RECT_WIDTH
-#undef DST_RECT_HEIGHT
-#undef DST_RECT_X
-#undef DST_RECT_Y
-
-#undef SRC_PITCH
-#undef DST_PITCH
-
-#undef RVAL
-#undef GVAL
-#undef BVAL
-
-#undef COPY_PIXEL
-#undef INTERPOLATE_2_PIXELS_1_1
-
-#undef INTERPOLATE_4_PIXELS_1_1_1_1
-}
-
-static void ResizeTranspImage_32(uint32_t *src, uint16_t *dst, int srcwidth, int srcheight, int srcpitch, uint32_t srckey, int dstwidth, int dstheight, int dstpitch, unsigned int dstkey)
-{
-    unsigned int dwidth, dheight, xdiff, ydiff, xpos, ypos, xstart;
-    uint32_t *linesrc;
-    uint16_t *linedst;
-
-#define SRC_RECT_WIDTH srcwidth
-#define SRC_RECT_HEIGHT srcheight
-#define SRC_RECT_X 0
-#define SRC_RECT_Y 0
-#define DST_RECT_WIDTH dstwidth
-#define DST_RECT_HEIGHT dstheight
-#define DST_RECT_X 0
-#define DST_RECT_Y 0
-
-#define SRC_PITCH srcpitch
-#define DST_PITCH dstpitch
-
-#define COPY_PIXEL(dstpix, a) { \
-        if ((a) == srckey) { \
-            dstpix = dstkey; \
-        } else { \
-            register unsigned int tmppix; \
-            tmppix = ( (((a) & 0xf8) << 8) | (((a) & 0xfc00) >> 5) | (((a) & 0xf80000) >> 19) ); \
-            dstpix = (tmppix == dstkey)?(dstkey - 1):(tmppix); \
-        } \
-    }
+#define NEXT_SRC_LINE ((uint32_t *) (((uintptr_t)linesrc) + srcpitch))
+#define COPY_PIXEL(dstpix, a) { dstpix = (a); }
 
 #define INTERPOLATE_2_PIXELS_1_1(dstpix, a, b) { \
-        if ((a) == srckey) { \
-            if ((b) == srckey) { \
-                dstpix = dstkey; \
-            } else { \
-                dstpix = ( (((b) & 0xf0) << 7) | (((b) & 0xf800) >> 6) | (((b) & 0xf00000) >> 20) ); \
-            } \
+        if ((a) == (b)) { \
+            dstpix = (a); \
+        } else if ((a) == srckey) { \
+            dstpix = (((b) & 0xfefefefe & ~alphavalue) >> 1) | ((b) & alphavalue); \
         } else if ((b) == srckey) { \
-            dstpix = ( (((a) & 0xf0) << 7) | (((a) & 0xf800) >> 6) | (((a) & 0xf00000) >> 20) ); \
+            dstpix = (((a) & 0xfefefefe & ~alphavalue) >> 1) | ((a) & alphavalue); \
         } else { \
-            register unsigned int tmppix; \
-            tmppix = ( (((((a) & 0xff) + ((b) & 0xff)) & 0x1f0) << 7) | (((((a) & 0xff00) + ((b) & 0xff00)) & 0x1f800) >> 6) | (((((a) & 0xff0000) + ((b) & 0xff0000)) & 0x1f00000) >> 20) ); \
-            dstpix = (tmppix == dstkey)?(dstkey - 1):(tmppix); \
+            dstpix = dstpix = (((((a) & 0xff00ff) + ((b) & 0xff00ff)) >> 1) & 0xff00ff) | (((((a) & 0xff00ff00) >> 1) + (((b) & 0xff00ff00) >> 1)) & 0xff00ff00); \
         } \
     }
 
 #define INTERPOLATE_4_PIXELS_1_1_1_1(dstpix, a, b, c, d) { \
-        register unsigned int red, green, blue, tmppix; \
+        register unsigned int c0, c2, tmppix; \
         if ((a) == srckey) { \
-            red = green = blue = 0; \
+            c0 = c2 = 0; \
             tmppix = 1; \
         } else { \
-            red = (a) & 0xff; green = (a) & 0xff00; blue = (a) & 0xff0000; \
+            c0 = (a) & 0xff00ff; c2 = ((a) & 0xff00ff00) >> 2; \
             tmppix = 0; \
         } \
         if ((b) == srckey) { \
             tmppix ++; \
         } else { \
-            red += (b) & 0xff; green += (b) & 0xff00; blue += (b) & 0xff0000; \
+            c0 += (b) & 0xff00ff; c2 += ((b) & 0xff00ff00) >> 2; \
         } \
         if ((c) == srckey) { \
             tmppix ++; \
         } else { \
-            red += (c) & 0xff; green += (c) & 0xff00; blue += (c) & 0xff0000; \
+            c0 += (c) & 0xff00ff; c2 += ((c) & 0xff00ff00) >> 2; \
         } \
         if ((d) == srckey) { \
             tmppix ++; \
         } else { \
-            red += (d) & 0xff; green += (d) & 0xff00; blue += (d) & 0xff0000; \
+            c0 += (d) & 0xff00ff; c2 += ((d) & 0xff00ff00) >> 2; \
         } \
-        if (tmppix == 4) { \
-            dstpix = dstkey; \
-        } else { \
-            tmppix = ( ((red & 0x3e0) << 6) | ((green & 0x3f000) >> 7) | ((blue & 0x3e00000) >> 21) ); \
-            dstpix = (tmppix == dstkey)?(dstkey - 1):(tmppix); \
+        switch(tmppix) { \
+            case 1: \
+                c0 += alphavalue & 0xff00ff; c2 += (alphavalue & 0xff00ff00) >> 2; \
+            case 0: \
+                dstpix = ((c0 >> 2) & 0xff00ff) | (c2 & 0xff00ff00); \
+                break; \
+            case 2: \
+                tmppix = ((c0 >> 1) & 0xff00ff) | ((c2 << 1) & 0xff00ff00); \
+                dstpix = (((tmppix) & 0xfefefefe & ~alphavalue) >> 1) | ((tmppix) & alphavalue); \
+                break; \
+            case 3: \
+                tmppix = c0 | (c2 << 2); \
+                dstpix = (((tmppix) & 0xfcfcfcfc & ~alphavalue) >> 2) | ((tmppix) & alphavalue); \
+                break; \
+            case 4: \
+                dstpix = srckey; \
+                break; \
         } \
     }
 
-    src = ((uint32_t *) (((uintptr_t)src) + SRC_RECT_Y * SRC_PITCH)) + SRC_RECT_X;
-    dst = ((uint16_t *) (((uintptr_t)dst) + DST_RECT_Y * DST_PITCH)) + DST_RECT_X;
-
-    if (SRC_RECT_WIDTH <= DST_RECT_WIDTH)
-    {
-        xstart = 0;
-    }
-    else
-    {
-        xstart = 65536 - ((DST_RECT_WIDTH << 16) / SRC_RECT_WIDTH);
-    }
-
-    if (SRC_RECT_HEIGHT <= DST_RECT_HEIGHT)
-    {
-        ypos = 0;
-    }
-    else
-    {
-        ypos = 65536 - ((DST_RECT_HEIGHT << 16) / SRC_RECT_HEIGHT);
-    }
-
-    xdiff = (SRC_RECT_WIDTH << 16) / DST_RECT_WIDTH;
-    ydiff = (SRC_RECT_HEIGHT << 16) / DST_RECT_HEIGHT;
-
-
-    srckey &= 0xffffff;
-
-    for (dheight = DST_RECT_HEIGHT; dheight != 0; dheight--)
+    for (dheight = dstimage->h; dheight != 0; dheight--)
     {
         linesrc = src;
         linedst = dst;
@@ -1729,21 +1599,21 @@ static void ResizeTranspImage_32(uint32_t *src, uint16_t *dst, int srcwidth, int
         switch ((ypos >> 14) & 3)
         {
             case 3:
-                linesrc = (uint32_t *) (((uintptr_t)src) + SRC_PITCH);
+                linesrc = NEXT_SRC_LINE;
             case 0:
-                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                for (dwidth = dstimage->w; dwidth != 0; dwidth--)
                 {
                     switch ((xpos >> 14) & 3)
                     {
                         case 0:
-                            COPY_PIXEL(*linedst, linesrc[0]);
+                            COPY_PIXEL(*linedst, linesrc[0])
                             break;
                         case 1:
                         case 2:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], linesrc[1]);
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], linesrc[1])
                             break;
                         case 3:
-                            COPY_PIXEL(*linedst, linesrc[1]);
+                            COPY_PIXEL(*linedst, linesrc[1])
                             break;
                     }
 
@@ -1756,19 +1626,19 @@ static void ResizeTranspImage_32(uint32_t *src, uint16_t *dst, int srcwidth, int
                 break;
             case 1:
             case 2:
-                for (dwidth = DST_RECT_WIDTH; dwidth != 0; dwidth--)
+                for (dwidth = dstimage->w; dwidth != 0; dwidth--)
                 {
                     switch ((xpos >> 14) & 3)
                     {
                         case 0:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[0]);
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[0], NEXT_SRC_LINE[0])
                             break;
                         case 1:
                         case 2:
-                            INTERPOLATE_4_PIXELS_1_1_1_1(*linedst, linesrc[0], linesrc[1], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[0], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[1]);
+                            INTERPOLATE_4_PIXELS_1_1_1_1(*linedst, linesrc[0], linesrc[1], NEXT_SRC_LINE[0], NEXT_SRC_LINE[1])
                             break;
                         case 3:
-                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[1], ((uint32_t *) (((uintptr_t)linesrc) + SRC_PITCH))[1]);
+                            INTERPOLATE_2_PIXELS_1_1(*linedst, linesrc[1], NEXT_SRC_LINE[1])
                             break;
                     }
 
@@ -1783,28 +1653,53 @@ static void ResizeTranspImage_32(uint32_t *src, uint16_t *dst, int srcwidth, int
 
 
         ypos += ydiff;
-        src = (uint32_t *) (((uintptr_t)src) + (ypos >> 16) * SRC_PITCH);
+        src = (uint32_t *) (((uintptr_t)src) + (ypos >> 16) * srcpitch);
         ypos &= 0xffff;
 
-        dst = (uint16_t *) (((uintptr_t)dst) + DST_PITCH);
+        dst = (uint32_t *) (((uintptr_t)dst) + dstpitch);
     }
 
-#undef SRC_RECT_WIDTH
-#undef SRC_RECT_HEIGHT
-#undef SRC_RECT_X
-#undef SRC_RECT_Y
-#undef DST_RECT_WIDTH
-#undef DST_RECT_HEIGHT
-#undef DST_RECT_X
-#undef DST_RECT_Y
-
-#undef SRC_PITCH
-#undef DST_PITCH
-
+#undef NEXT_SRC_LINE
 #undef COPY_PIXEL
 #undef INTERPOLATE_2_PIXELS_1_1
-
 #undef INTERPOLATE_4_PIXELS_1_1_1_1
+}
+
+static SDL_Surface *ResizeImage(SDL_Surface *srcimage, int width, int height, int transp)
+{
+    SDL_Surface *dstimage;
+
+    if ((srcimage->format->BitsPerPixel != 32) && (transp || (srcimage->format->BitsPerPixel != 24)))
+    {
+        return NULL;
+    }
+
+    dstimage = SDL_CreateRGBSurface(SDL_SWSURFACE, width, height, srcimage->format->BitsPerPixel, srcimage->format->Rmask, srcimage->format->Gmask, srcimage->format->Bmask, srcimage->format->Amask);
+    if (dstimage == NULL)
+    {
+        return NULL;
+    }
+
+    SDL_LockSurface(srcimage);
+    SDL_LockSurface(dstimage);
+
+    if (transp)
+    {
+        ResizeTranspImage_32(srcimage, dstimage, SDL_MapRGBA(srcimage->format, TRANS_R, TRANS_G, TRANS_B, SDL_ALPHA_TRANSPARENT));
+    }
+    else if (srcimage->format->BitsPerPixel == 32)
+    {
+        ResizeImage_32(srcimage, dstimage);
+    }
+    else
+    {
+        ResizeImage_24(srcimage, dstimage);
+    }
+
+    SDL_UnlockSurface(dstimage);
+    SDL_UnlockSurface(srcimage);
+
+    return dstimage;
 }
 
 
@@ -1812,8 +1707,7 @@ static void ResizeTranspImage_32(uint32_t *src, uint16_t *dst, int srcwidth, int
 static SDL_Surface *loadAndResizeImage(char *name, int width, int height, int transp)
 {
 	SDL_Surface *temp = IMG_Load(name);
-	SDL_Surface *image;
-    int wrongformat;
+	SDL_Surface *image, *temp2;
 
 	if (temp == NULL)
 	{
@@ -1826,74 +1720,90 @@ static SDL_Surface *loadAndResizeImage(char *name, int width, int height, int tr
     if (height == 0) height = ((temp->h * TILE_HEIGHT) + (TAILLE_BLOC - 1)) / TAILLE_BLOC;
 
 
-	/* Convertit l'image au format de l'écran (screen) */
-
-    image = SDL_CreateRGBSurface((transp)?(SDL_HWSURFACE | SDL_SRCCOLORKEY):(SDL_HWSURFACE), width, height, ecran->format->BitsPerPixel, ecran->format->Rmask, ecran->format->Gmask, ecran->format->Bmask, ecran->format->Amask);
-	if (image == NULL)
-	{
-        SDL_FreeSurface(temp);
-		printf("Failed to convert image %s to native format\n", name);
-
-		return NULL;
-	}
-
-    SDL_LockSurface(temp);
-    SDL_LockSurface(image);
-
-    wrongformat = 1;
-    if (transp)
+    if ((width != temp->w) || (height != temp->h))
     {
-        if (temp->format->BitsPerPixel == 32)
-        {
-            if (temp->format->Rmask == 0xff)
-            {
-                wrongformat = 0;
-                ResizeTranspImage_32((uint32_t *) temp->pixels, (uint16_t *) image->pixels, temp->w, temp->h, temp->pitch, SDL_MapRGB(temp->format, TRANS_R, TRANS_G, TRANS_B), width, height, image->pitch, (uint16_t) SDL_MapRGB(image->format, TRANS_R, TRANS_G, TRANS_B));
-            }
-        }
-
-        SDL_UnlockSurface(image);
-
-        /* Gestion de la transparence*/
-        SDL_SetColorKey(image, (SDL_SRCCOLORKEY|SDL_RLEACCEL), SDL_MapRGB(image->format, TRANS_R, TRANS_G, TRANS_B));
+        temp2 = ResizeImage(temp, width, height, transp);
+        SDL_FreeSurface(temp);
     }
     else
     {
-        if (temp->format->BitsPerPixel == 32)
-        {
-            if (temp->format->Rmask == 0xff)
-            {
-                wrongformat = 0;
-                ResizeImage_32_RGB((uint32_t *) temp->pixels, (uint16_t *) image->pixels, temp->w, temp->h, temp->pitch, width, height, image->pitch);
-            }
-        }
-        else if (temp->format->BitsPerPixel == 24)
-        {
-            if (temp->format->Rmask == 0xff)
-            {
-                wrongformat = 0;
-                ResizeImage_24_RGB((uint8_t *) temp->pixels, (uint16_t *) image->pixels, temp->w, temp->h, temp->pitch, width, height, image->pitch);
-            }
-            else
-            {
-                wrongformat = 0;
-                ResizeImage_24_BGR((uint8_t *) temp->pixels, (uint16_t *) image->pixels, temp->w, temp->h, temp->pitch, width, height, image->pitch);
-            }
-        }
-
-        SDL_UnlockSurface(image);
+        temp2 = temp;
     }
 
-    SDL_UnlockSurface(temp);
-	SDL_FreeSurface(temp);
+    if (temp2 != NULL)
+    {
+        if (transp)
+        {
 
-	if (wrongformat)
-	{
-        SDL_FreeSurface(image);
+#if defined(GP2X)
+            #define COLORKEYGP2X 0xf81f
+            #define NCOLORKEYGP2X 0xf83f
+
+            image = SDL_CreateRGBSurface(SDL_HWSURFACE, temp2->w, temp2->h, 16, 0xf800, 0x07e0, 0x001f, 0);
+            if (image != NULL)
+            {
+                int y;
+                uint32_t srccolorkey = SDL_MapRGBA(temp2->format, TRANS_R, TRANS_G, TRANS_B, SDL_ALPHA_TRANSPARENT);
+
+                /* Gestion de la transparence*/
+                SDL_SetColorKey(image, SDL_SRCCOLORKEY, COLORKEYGP2X);
+
+                /* Convertit l'image au format de l'écran (screen) */
+                SDL_LockSurface(temp2);
+                SDL_LockSurface(image);
+                for (y = 0; y < temp2->h; y++)
+                {
+                    int x;
+                    uint32_t *src = (uint32_t *)(y * temp2->pitch + (uintptr_t)temp2->pixels);
+                    uint16_t *dst = (uint16_t *)(y * image->pitch + (uintptr_t)image->pixels);
+                    for (x = 0; x < temp2->w; x++)
+                    {
+                        if (src[x] == srccolorkey)
+                        {
+                            dst[x] = COLORKEYGP2X;
+                        }
+                        else
+                        {
+                            int colr = (src[x] >>  3) & 0x1f;
+                            int colg = (src[x] >> 10) & 0x3f;
+                            int colb = (src[x] >> 19) & 0x1f;
+                            int col16 = (colr << 11) | (colg << 5) | colb;
+                            dst[x] = (col16 == COLORKEYGP2X)?NCOLORKEYGP2X:col16;
+                        }
+                    }
+                }
+                SDL_UnlockSurface(image);
+                SDL_UnlockSurface(temp2);
+            }
+
+            #undef COLORKEYGP2X
+            #undef NCOLORKEYGP2X
+#else
+            /* Gestion de la transparence*/
+            SDL_SetColorKey(temp2, (SDL_SRCCOLORKEY|SDL_RLEACCEL), SDL_MapRGB(temp2->format, TRANS_R, TRANS_G, TRANS_B));
+
+            /* Convertit l'image au format de l'écran (screen) */
+            image = SDL_DisplayFormat(temp2);
+#endif
+        }
+        else
+        {
+            /* Convertit l'image au format de l'écran (screen) */
+            image = SDL_DisplayFormat(temp2);
+        }
+        SDL_FreeSurface(temp2);
+    }
+    else
+    {
+        image = NULL;
+    }
+
+    if (image == NULL)
+    {
 		printf("Failed to convert image %s to native format\n", name);
 
 		return NULL;
-	}
+    }
 
 	/* Retourne l'image au format de l'écran pour accélérer son blit */
 
@@ -2393,6 +2303,109 @@ void getInput()
 				}
 			break;
 
+#if defined(GP2X)
+			case SDL_JOYBUTTONDOWN:
+				switch (event.jbutton.button)
+				{
+
+					case GP2X_BUTTON_LEFT:
+					case GP2X_BUTTON_UPLEFT:
+					case GP2X_BUTTON_DOWNLEFT:
+						input.left = 1;
+					break;
+
+					case GP2X_BUTTON_RIGHT:
+					case GP2X_BUTTON_UPRIGHT:
+					case GP2X_BUTTON_DOWNRIGHT:
+						input.right = 1;
+					break;
+
+					case GP2X_BUTTON_DOWN:
+						input.down = 1;
+					break;
+
+					case GP2X_BUTTON_UP:
+						input.up = 1;
+					break;
+
+					case GP2X_BUTTON_A:
+						input.un = 1;
+					break;
+
+					case GP2X_BUTTON_Y:
+						input.deux = 1;
+					break;
+
+					case GP2X_BUTTON_B:
+						input.trois = 1;
+					break;
+
+
+					case GP2X_BUTTON_X:
+						input.enter = 1;
+					break;
+
+					case GP2X_BUTTON_SELECT:
+						input.quit = 1;
+					break;
+
+					case GP2X_BUTTON_VOLUP:
+						Change_HW_Audio_Volume(4);
+					break;
+
+					case GP2X_BUTTON_VOLDOWN:
+						Change_HW_Audio_Volume(-4);
+					break;
+
+					default:
+					break;
+				}
+			break;
+
+			case SDL_JOYBUTTONUP:
+				switch (event.jbutton.button)
+				{
+					case GP2X_BUTTON_LEFT:
+					case GP2X_BUTTON_UPLEFT:
+					case GP2X_BUTTON_DOWNLEFT:
+						input.left = 0;
+					break;
+
+					case GP2X_BUTTON_RIGHT:
+					case GP2X_BUTTON_UPRIGHT:
+					case GP2X_BUTTON_DOWNRIGHT:
+						input.right = 0;
+					break;
+
+					case GP2X_BUTTON_DOWN:
+						input.down = 0;
+					break;
+
+					case GP2X_BUTTON_UP:
+						input.up = 0;
+					break;
+
+					case GP2X_BUTTON_A:
+						input.un = 0;
+					break;
+
+					case GP2X_BUTTON_Y:
+						input.deux = 0;
+					break;
+
+					case GP2X_BUTTON_B:
+						input.trois = 0;
+					break;
+
+					case GP2X_BUTTON_X:
+						input.enter = 0;
+					break;
+
+					default:
+					break;
+				}
+			break;
+#endif
 
 
 

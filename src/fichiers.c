@@ -180,64 +180,28 @@ int chargerNiveau(int niveau[][NB_BLOCS_HAUTEUR], int level)
      switch (caractereLu)
             {
                 case '1':
-                    tileSet = 1;
-                    break;
                 case '2':
-                    tileSet = 2;
-                    break;
                 case '3':
-                    tileSet = 3;
-                    break;
                 case '4':
-                    tileSet = 4;
-                    break;
                 case '5':
-                    tileSet = 5;
-                    break;
                 case '6':
-                    tileSet = 6;
-                    break;
                 case '7':
-                    tileSet = 7;
-                    break;
                 case '8':
-                    tileSet = 8;
-                    break;
                 case '9':
-                    tileSet = 9;
+                    tileSet = 1 + caractereLu - '1';
                     break;
                 case 'A':
-                    tileSet = 10;
-                    break;
                 case 'B':
-                    tileSet = 11;
-                    break;
                 case 'C':
-                    tileSet = 12;
-                    break;
                 case 'D':
-                    tileSet = 13;
-                    break;
                 case 'E':
-                    tileSet = 14;
-                    break;
                 case 'F':
-                    tileSet = 15;
-                    break;
                 case 'G':
-                    tileSet = 16;
-                    break;
                 case 'H':
-                    tileSet = 17;
-                    break;
                 case 'I':
-                    tileSet = 18;
-                    break;
                 case 'J':
-                    tileSet = 19;
-                    break;
                 case 'K':
-                    tileSet = 20;
+                    tileSet = 10 + caractereLu - 'A';
                     break;
             }
 
@@ -253,166 +217,64 @@ int chargerNiveau(int niveau[][NB_BLOCS_HAUTEUR], int level)
             switch (ligneFichier[(i * NB_BLOCS_LARGEUR) + j])
             {
                 case '0':
-                    niveau[j][i] = 0;
-                    break;
                 case '1':
-                    niveau[j][i] = 1;
-                    break;
                 case '2':
-                    niveau[j][i] = 2;
-                    break;
                 case '3':
-                    niveau[j][i] = 3;
-                    break;
                 case '4':
-                    niveau[j][i] = 4;
-                    break;
                 case '5':
-                    niveau[j][i] = 5;
-                    break;
                 case '6':
-                    niveau[j][i] = 6;
-                    break;
                 case '7':
-                    niveau[j][i] = 7;
-                    break;
                 case '8':
-                    niveau[j][i] = 8;
-                    break;
                 case '9':
-                    niveau[j][i] = 9;
+                    niveau[j][i] = ligneFichier[(i * NB_BLOCS_LARGEUR) + j] - '0';
                     break;
                 case 'A':
-                    niveau[j][i] = 10;
-                    break;
                 case 'B':
-                    niveau[j][i] = 11;
-                    break;
                 case 'C':
-                    niveau[j][i] = 12;
-                    break;
                 case 'D':
-                    niveau[j][i] = 13;
-                    break;
                 case 'E':
-                    niveau[j][i] = 14;
-                    break;
                 case 'F':
-                    niveau[j][i] = 15;
-                    break;
                 case 'G':
-                    niveau[j][i] = 16;
-                    break;
                 case 'H':
-                    niveau[j][i] = 17;
-                    break;
                 case 'I':
-                    niveau[j][i] = 18;
-                    break;
                 case 'J':
-                    niveau[j][i] = 19;
-                    break;
                 case 'K':
-                    niveau[j][i] = 20;
-                    break;
                 case 'L':
-                    niveau[j][i] = 21;
-                    break;
                 case 'M':
-                    niveau[j][i] = 22;
-                    break;
                 case 'N':
-                    niveau[j][i] = 23;
-                    break;
                 case 'O':
-                    niveau[j][i] = 24;
-                    break;
                 case 'P':
-                    niveau[j][i] = 25;
-                    break;
                 case 'Q':
-                    niveau[j][i] = 26;
-                    break;
                 case 'R':
-                    niveau[j][i] = 27;
-                    break;
                 case 'S':
-                    niveau[j][i] = 28;
-                    break;
                 case 'T':
-                    niveau[j][i] = 29;
-                    break;
                 case 'U':
-                    niveau[j][i] = 30;
-                    break;
                 case 'V':
-                    niveau[j][i] = 31;
-                    break;
                 case 'W':
-                    niveau[j][i] = 32;
-                    break;
                 case 'X':
-                    niveau[j][i] = 33;
-                    break;
                 case 'Y':
-                    niveau[j][i] = 34;
-                    break;
                 case 'Z':
-                    niveau[j][i] = 35;
+                    niveau[j][i] = 10 + ligneFichier[(i * NB_BLOCS_LARGEUR) + j] - 'A';
                     break;
                 case 'a':
-                    niveau[j][i] = 36;
-                    break;
                 case 'b':
-                    niveau[j][i] = 37;
-                    break;
                 case 'c':
-                    niveau[j][i] = 38;
-                    break;
                 case 'd':
-                    niveau[j][i] = 39;
-                    break;
                 case 'e':
-                    niveau[j][i] = 40;
-                    break;
                 case 'f':
-                    niveau[j][i] = 41;
-                    break;
                 case 'g':
-                    niveau[j][i] = 42;
-                    break;
                 case 'h':
-                    niveau[j][i] = 43;
-                    break;
                 case 'i':
-                    niveau[j][i] = 44;
-                    break;
                 case 'j':
-                    niveau[j][i] = 45;
-                    break;
                 case 'k':
-                    niveau[j][i] = 46;
-                    break;
                 case 'l':
-                    niveau[j][i] = 47;
-                    break;
                 case 'm':
-                    niveau[j][i] = 48;
-                    break;
                 case 'n':
-                    niveau[j][i] = 49;
-                    break;
                 case 'o':
-                    niveau[j][i] = 50;
-                    break;
                 case 'p':
-                    niveau[j][i] = 51;
-                    break;
                 case 'q':
-                    niveau[j][i] = 52;
-                    break;
                 case 'r':
-                    niveau[j][i] = 53;
+                    niveau[j][i] = 36 + ligneFichier[(i * NB_BLOCS_LARGEUR) + j] - 'a';
                     break;
             }
         }

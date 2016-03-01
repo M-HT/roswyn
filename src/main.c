@@ -10,6 +10,16 @@
 #include "constantes.h"
 #include "fichiers.h"
 #include "jeu.h"
+#if defined(GP2X)
+    #include <sys/ioctl.h>
+    #include <unistd.h>
+    #include <sys/soundcard.h>
+    #include <fcntl.h>
+    #if (SDL_MAJOR_VERSION > 1 || SDL_MAJOR_VERSION == 1 && (SDL_MINOR_VERSION > 2 || SDL_MINOR_VERSION == 2 && SDL_PATCHLEVEL >= 9 ) )
+        #include <SDL/SDL_gp2x.h>
+    #endif
+#endif
+
 
 
 
@@ -91,8 +101,32 @@ SDL_Surface *ennemi1Actuel, *ennemi2Actuel, *ennemi3Actuel, *ennemi4Actuel, *enn
 SDL_Surface *pnj1Actuel, *pnj2Actuel;
 SDL_Surface *fireballActuel, *tempsActuel, *marioActuel;
 
+#if defined(GP2X)
+static int tvout = 0;
+#endif
+
+static int skiptick = 0;
+static int skipframe = 0;
+static int SkipDraw(void)
+{
+#if defined(GP2X)
+    if (tvout) return 0;
+#endif
+    int tick = SDL_GetTicks();
+    skipframe++;
+    if ((skipframe == 4) || (tick - skiptick > 70))
+    {
+        skipframe = 0;
+        skiptick = tick;
+        return 0;
+    }
+    return 1;
+}
+
 static void DrawScreen1(void)
 {
+    if (SkipDraw()) return;
+
     AfficheNiveau(position, ecran, carte, level);
     if (ennemi1vivant == 1) { BlitSprite(ennemi1Actuel, ecran, &positionEnnemi1); }
     if (ennemi2vivant == 1) { BlitSprite(ennemi2Actuel, ecran, &positionEnnemi2); }
@@ -119,8 +153,89 @@ void ClearKeys(void)
     keys_pressed[9] = 0;
 }
 
+#if defined(GP2X)
+static int InitialVolume;
+
+// Set new GP2X mixer level, 0-100
+static void Set_GP2X_Volume (int newvol)
+{
+    int soundDev, vol;
+
+    if ((newvol >= 0) && (newvol <= 100))
+    {
+        soundDev = open("/dev/mixer", O_RDWR);
+        if (soundDev != -1)
+        {
+            vol = ((newvol << 8) | newvol);
+            ioctl(soundDev, SOUND_MIXER_WRITE_PCM, &vol);
+            close(soundDev);
+        }
+    }
+}
+
+// Returns 0-100, current mixer volume, -1 on error.
+static int Get_GP2X_Volume (void)
+{
+    int soundDev, vol;
+
+    vol = -1;
+    soundDev = open("/dev/mixer", O_RDONLY);
+    if (soundDev != -1)
+    {
+        ioctl(soundDev, SOUND_MIXER_READ_PCM, &vol);
+        close(soundDev);
+        if (vol != -1)
+        {
+            //just return one channel , not both channels, they're hopefully the same anyways
+            return (vol & 0xFF);
+        }
+    }
+
+    return vol;
+}
+
+static void Set_Initial_GP2X_Volume (void)
+{
+    Set_GP2X_Volume(InitialVolume);
+}
+
+void Change_HW_Audio_Volume (int amount)
+{
+    int current_volume;
+
+    current_volume = Get_GP2X_Volume();
+
+    if (current_volume == -1) current_volume = 68;
+
+    if ((amount > 1) && current_volume < 12)
+    {
+        amount = 1;
+    }
+    else if ((amount < -1) && current_volume <= 12)
+    {
+        amount = -1;
+    }
+
+    current_volume += amount;
+
+    if (current_volume > 100)
+    {
+        current_volume = 100;
+    }
+    else if (current_volume < 0)
+    {
+        current_volume = 0;
+    }
+    Set_GP2X_Volume(current_volume);
+}
+#endif
+
 int main(int argc, char *argv[])
 {
+#if defined(GP2X)
+    InitialVolume = Get_GP2X_Volume();
+    atexit(Set_Initial_GP2X_Volume);
+#endif
 //23 dec 09 : on initialise les joysticks
     SDL_Init( SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_AUDIO );
 
@@ -237,19 +352,22 @@ int main(int argc, char *argv[])
     InitSwitchs();
 
     /* Initialisation de FMOD */
-#ifdef GP2X
-    //Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 2048);
-    Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 1, 1024);
+#if defined(GP2X)
+#define MIX_BUFFER_SIZE 512
 #else
-    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096);
+#define MIX_BUFFER_SIZE 4096
 #endif
+    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, MIX_BUFFER_SIZE);
     Mix_AllocateChannels(16);
 #if SDL_VERSIONNUM(SDL_MIXER_MAJOR_VERSION, SDL_MIXER_MINOR_VERSION, SDL_MIXER_PATCHLEVEL) >= SDL_VERSIONNUM(1, 2, 10)
-    #ifdef GP2X
+    #if defined(GP2X)
         Mix_Init(MIX_INIT_OGG);
     #else
         Mix_Init(MIX_INIT_MP3);
     #endif
+#endif
+#if defined(GP2X)
+    Set_Initial_GP2X_Volume();
 #endif
 
     //Pour le son
@@ -290,8 +408,15 @@ int main(int argc, char *argv[])
 
     //23 dec 09 : Pour le joystick
      //Stocke le numéro du joystick
-#ifdef GP2X
+#if defined(GP2X)
     SDL_JoystickOpen(0);
+#if defined(SDL_GP2X__H)
+    if (SDL_GP2X_MouseType() == GP2X_MOUSE_TOUCHSCREEN)
+    {
+        SDL_GP2X_TouchpadMouseMotionEvents(0);
+        SDL_GP2X_TouchpadMouseButtonEvents(0);
+    }
+#endif
 #elif !defined(PANDORA)
     if ( SDL_NumJoysticks() > 0 )
     {
@@ -311,10 +436,19 @@ int main(int argc, char *argv[])
     int profil = 1;  // Profil : 1 = normal, 2 = netbooks
     int KR = 10;
 
-#ifdef GP2X
+#if defined(GP2X)
+    #if defined(SDL_GP2X__H)
+    {
+        SDL_Rect size;
+
+        SDL_GP2X_GetPhysicalScreenSize(&size);
+
+        tvout = (size.w == 320)?0:1;
+    }
+    #endif
+
     KR = 10;
     ecran = SDL_SetVideoMode(320, 240, 16, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN | SDL_NOFRAME );
-    //ecran = SDL_SetVideoMode(320, 240, 16, SDL_SWSURFACE );
 #elif defined(PANDORA)
     KR = 10;
     ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN | SDL_NOFRAME );
@@ -741,6 +875,131 @@ int main(int argc, char *argv[])
 
                         }
                         break;
+
+#if defined(GP2X)
+                    case SDL_JOYBUTTONDOWN:
+
+                        switch(event.jbutton.button)
+                        {
+                        case GP2X_BUTTON_UP : // Flèche haut anim complete : on teste les 2 tiles contre lesquels se trouve le perso et on met a jour l'animation selon la valeur d' animMario
+                            arrow_pressed = 1;
+                            keys_pressed[8] = 1;
+                            break;
+
+                        case GP2X_BUTTON_UPRIGHT :
+                            keys_pressed[9] = 1;
+                            break;
+
+                        case GP2X_BUTTON_UPLEFT :
+                            keys_pressed[7] = 1;
+                            break;
+
+                        case GP2X_BUTTON_DOWN: // Flèche bas anim idem
+                            arrow_pressed = 2;
+                            keys_pressed[2] = 1;
+                            break;
+
+                        case GP2X_BUTTON_DOWNRIGHT :
+                            keys_pressed[3] = 1;
+                            break;
+
+                        case GP2X_BUTTON_DOWNLEFT :
+                            keys_pressed[1] = 1;
+                            break;
+
+                        case GP2X_BUTTON_RIGHT: // Flèche droite anim idem
+                            arrow_pressed = 3;
+                            keys_pressed[6] = 1;
+                            break;
+
+                        case GP2X_BUTTON_LEFT: // Flèche gauche anim idem
+                            arrow_pressed = 4;
+                            keys_pressed[4] = 1;
+                            break;
+
+                        case GP2X_BUTTON_A:
+                        case GP2X_BUTTON_B:
+                        case GP2X_BUTTON_X:
+                        case GP2X_BUTTON_Y:
+                            keys_pressed[0] = 1;
+                            break;
+
+                        case GP2X_BUTTON_START:
+                            if (input.timer + 500 < SDL_GetTicks())
+                            {
+
+                            input.timer = SDL_GetTicks();
+                            input.pause = 1;
+
+                            }
+
+                            break;
+
+                        case GP2X_BUTTON_SELECT: /* Si c'est un évènement de type "Quitter" */
+                            continuer = 0;
+                            break;
+
+                        case GP2X_BUTTON_VOLUP:
+                            Change_HW_Audio_Volume(4);
+                            break;
+
+                        case GP2X_BUTTON_VOLDOWN:
+                            Change_HW_Audio_Volume(-4);
+                            break;
+
+                        default:
+                            break;
+                        }
+                        break;
+
+                    case SDL_JOYBUTTONUP:
+
+                        switch(event.jbutton.button)
+                        {
+                        case GP2X_BUTTON_UP :
+                            keys_pressed[8] = 0;
+                            break;
+
+                        case GP2X_BUTTON_UPRIGHT :
+                            keys_pressed[9] = 0;
+                            break;
+
+                        case GP2X_BUTTON_UPLEFT :
+                            keys_pressed[7] = 0;
+                            break;
+
+                        case GP2X_BUTTON_DOWN:
+                            keys_pressed[2] = 0;
+                            break;
+
+                        case GP2X_BUTTON_DOWNRIGHT :
+                            keys_pressed[3] = 0;
+                            break;
+
+                        case GP2X_BUTTON_DOWNLEFT :
+                            keys_pressed[1] = 0;
+                            break;
+
+                        case GP2X_BUTTON_RIGHT:
+                            keys_pressed[6] = 0;
+                            break;
+
+                        case GP2X_BUTTON_LEFT:
+                            keys_pressed[4] = 0;
+                            break;
+
+                        case GP2X_BUTTON_A:
+                        case GP2X_BUTTON_B:
+                        case GP2X_BUTTON_X:
+                        case GP2X_BUTTON_Y:
+                            keys_pressed[0] = 0;
+                            break;
+
+                        default:
+                            break;
+                        }
+                        break;
+#endif
 
 #if !defined(GP2X) && !defined(PANDORA)
                 //23dec09 : gestion du joystick (en parallèle du clavier)
@@ -2334,8 +2593,12 @@ int main(int argc, char *argv[])
 
             //2. S'il y a collision, le player est propulsé vers le bas :
             if (collision) {
+                            collision = 0;
                             for ( i = 0 ; i < 10 ; i++) {
                             DeplacePlayer(BAS, 2, ecran, carte);
+
+                            if (SkipDraw()) continue;
+
                             AfficheNiveau(position, ecran, carte, level);
                             if (bossvivant == 1) { BlitSprite(bossActuel, ecran, &positionBoss); }
                             if (nbfireballs >= 1) { BlitSprite(fireballActuel, ecran, &positionFireball1); }
@@ -2345,7 +2608,6 @@ int main(int argc, char *argv[])
                             if ( weather >= 1 ) BlitSprite(tempsActuel, ecran, &positionPluie);
                             BlitSprite(marioActuel, ecran, &positionMario);
                             FlipScreen();
-                            collision = 0;
                             }  }
 
 
@@ -3110,16 +3372,25 @@ int main(int argc, char *argv[])
 
 
     //Pour avoir 60 fps : il faut un tour de boucle tous les 16ms (16.6 exactement)
+#if defined(GP2X)
+if (!tvout) { /* do nothing */ } else
+#endif
 if ( fps )
 {
-    if( SDL_GetTicks() < fpstime )
-    { delai = fpstime - SDL_GetTicks();
+    delai = SDL_GetTicks();
+    if (delai - fpstime >= 33)
+    {
+        fpstime = delai - 16;
     }
-    else delai = 1;
-
-    SDL_Delay(delai);
-
-    fpstime = SDL_GetTicks() + 16;
+    else
+    {
+        while (delai - fpstime < 16)
+        {
+            SDL_Delay(1);
+            delai = SDL_GetTicks();
+        }
+        fpstime += 16;
+    }
 }
 else SDL_Delay(1);
 
