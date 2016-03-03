@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_ttf.h>
@@ -82,6 +83,14 @@
 
 #if defined(GP2X)
     extern void Change_HW_Audio_Volume (int amount);
+#endif
+
+#if !defined(MAX_PATH)
+    #if defined(_POSIX_PATH_MAX)
+        #define MAX_PATH _POSIX_PATH_MAX
+    #else
+        #define MAX_PATH 256
+    #endif
 #endif
 
 void FlipScreen(void)
@@ -1709,6 +1718,32 @@ static SDL_Surface *loadAndResizeImage(char *name, int width, int height, int tr
 	SDL_Surface *temp = IMG_Load(name);
 	SDL_Surface *image, *temp2;
 
+    if (temp == NULL)
+    {
+        char newname[MAX_PATH], *name2;
+        strncpy(newname, name, MAX_PATH);
+        newname[MAX_PATH-1] = 0;
+        name2 = rindex(newname, '/');
+        name2 = (name2 == NULL)?newname:(name2+1);
+        for (; *name2 != 0; name2++)
+        {
+            *name2 = tolower(*name2);
+        }
+
+        temp = IMG_Load(newname);
+        if (temp == NULL)
+        {
+            name2 = rindex(newname, '/');
+            name2 = (name2 == NULL)?newname:(name2+1);
+            for (; *name2 != 0; name2++)
+            {
+                *name2 = toupper(*name2);
+            }
+
+            temp = IMG_Load(newname);
+        }
+    }
+
 	if (temp == NULL)
 	{
 		printf("Failed to load image %s\n", name);
@@ -1825,6 +1860,32 @@ SDL_Surface *loadImage(char *name)
 
 	SDL_Surface *temp = IMG_Load(name);
 	SDL_Surface *image;
+
+    if (temp == NULL)
+    {
+        char newname[MAX_PATH], *name2;
+        strncpy(newname, name, MAX_PATH);
+        newname[MAX_PATH-1] = 0;
+        name2 = rindex(newname, '/');
+        name2 = (name2 == NULL)?newname:(name2+1);
+        for (; *name2 != 0; name2++)
+        {
+            *name2 = tolower(*name2);
+        }
+
+        temp = IMG_Load(newname);
+        if (temp == NULL)
+        {
+            name2 = rindex(newname, '/');
+            name2 = (name2 == NULL)?newname:(name2+1);
+            for (; *name2 != 0; name2++)
+            {
+                *name2 = toupper(*name2);
+            }
+
+            temp = IMG_Load(newname);
+        }
+    }
 
 	if (temp == NULL)
 	{
