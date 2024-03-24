@@ -280,7 +280,7 @@ switch(deplacement)
 
 int DeplaceEnnemi ( int ennemi, int deplacement, int x, SDL_Surface *ecran, int carte[NB_BLOCS_LARGEUR][NB_BLOCS_HAUTEUR] )
 {
-    SDL_Rect positionEnnemi;
+    SDL_Rect positionEnnemi = {0,0,0,0};
 
     if (ennemi == 1) positionEnnemi = positionEnnemi1;
     if (ennemi == 2) positionEnnemi = positionEnnemi2;
@@ -395,7 +395,7 @@ switch(deplacement)
 int DeplaceFireball (int fireball, int deplacement, int x, SDL_Surface *ecran, int carte[NB_BLOCS_LARGEUR][NB_BLOCS_HAUTEUR] )
 {
 
-SDL_Rect positionEnnemi;
+SDL_Rect positionEnnemi = {0,0,0,0};
 
     if ( fireball == 1) positionEnnemi = positionFireball1;
     else if ( fireball == 2) positionEnnemi = positionFireball2;
@@ -1096,7 +1096,9 @@ BlitSprite(shop, ecran, &pos);
                         {
                         case SDLK_KP1:
                         case SDLK_1:
+#if defined(GP2X)
                     shop_1:
+#endif
                         if (*money >= 30) { *money -= 30; *coeur=*coeurmax; AfficheDialogues (ecran, police, 988); }
                         else AfficheDialogues (ecran, police, 987);
                         continuer2 = 0;
@@ -1104,7 +1106,9 @@ BlitSprite(shop, ecran, &pos);
 
                         case SDLK_KP2:
                         case SDLK_2:
+#if defined(GP2X)
                     shop_2:
+#endif
                         fichier = fopen("save.lvl", "w+");
                         if (*level <= 9) fprintf(fichier, "00%d", *level);
                         else if (*level <= 99) fprintf(fichier, "0%d", *level);
@@ -1136,7 +1140,9 @@ BlitSprite(shop, ecran, &pos);
 
                         case SDLK_KP3:
                         case SDLK_3:
+#if defined(GP2X)
                     shop_3:
+#endif
                         if (*money >= 100) { *money -= 100; *potion+= 1; AfficheDialogues (ecran, police, 986); }
                         else AfficheDialogues (ecran, police, 987);
                         continuer2 = 0;
