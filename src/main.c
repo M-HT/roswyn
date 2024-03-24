@@ -3,22 +3,13 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
-#include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
-#include <SDL/SDL_ttf.h>
-#include <SDL/SDL_mixer.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_mixer.h>
 #include "constantes.h"
 #include "fichiers.h"
 #include "jeu.h"
-#if defined(GP2X)
-    #include <sys/ioctl.h>
-    #include <unistd.h>
-    #include <sys/soundcard.h>
-    #include <fcntl.h>
-    #if (SDL_MAJOR_VERSION > 1 || SDL_MAJOR_VERSION == 1 && (SDL_MINOR_VERSION > 2 || SDL_MINOR_VERSION == 2 && SDL_PATCHLEVEL >= 9 ) )
-        #include <SDL/SDL_gp2x.h>
-    #endif
-#endif
 
 
 
@@ -84,7 +75,10 @@
     Input input;
     SDL_Joystick *joystick = NULL;
     TTF_Font *police = NULL;
+    SDL_Window *window = NULL;
+    SDL_Surface *window_surface = NULL;
     SDL_Surface *ecran = NULL;
+    SDL_Rect flip_rect;
 
     Mix_Music *musiqueJouee = NULL;
 
@@ -101,17 +95,10 @@ SDL_Surface *ennemi1Actuel, *ennemi2Actuel, *ennemi3Actuel, *ennemi4Actuel, *enn
 SDL_Surface *pnj1Actuel, *pnj2Actuel;
 SDL_Surface *fireballActuel, *tempsActuel, *marioActuel;
 
-#if defined(GP2X)
-static int tvout = 0;
-#endif
-
 static int skiptick = 0;
 static int skipframe = 0;
 static int SkipDraw(void)
 {
-#if defined(GP2X)
-    if (tvout) return 0;
-#endif
     int tick = SDL_GetTicks();
     skipframe++;
     if ((skipframe == 4) || (tick - skiptick > 70))
@@ -144,6 +131,27 @@ static void DrawScreen1(void)
     FlipScreen(); /* On met à jour l'affichage */
 }
 
+static void calc_flip_rect(void)
+{
+    if (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN_DESKTOP) {
+        if (((float)window_surface->w) / ecran->w <= ((float)window_surface->h) / ecran->h) {
+            flip_rect.x = 0;
+            flip_rect.w = window_surface->w;
+            flip_rect.h = (window_surface->w * ecran->h) / ecran->w;
+            flip_rect.y = (window_surface->h - flip_rect.h) / 2;
+        } else {
+            flip_rect.y = 0;
+            flip_rect.h = window_surface->h;
+            flip_rect.w = (window_surface->h * ecran->w) / ecran->h;
+            flip_rect.x = (window_surface->w - flip_rect.w) / 2;
+        }
+    } else {
+        flip_rect.x = 0;
+        flip_rect.y = 0;
+        flip_rect.w = window_surface->w;
+        flip_rect.h = window_surface->h;
+    }
+}
 
 void ClearKeys(void)
 {
@@ -153,91 +161,14 @@ void ClearKeys(void)
     keys_pressed[9] = 0;
 }
 
-#if defined(GP2X)
-static int InitialVolume;
-
-// Set new GP2X mixer level, 0-100
-static void Set_GP2X_Volume (int newvol)
-{
-    int soundDev, vol;
-
-    if ((newvol >= 0) && (newvol <= 100))
-    {
-        soundDev = open("/dev/mixer", O_RDWR);
-        if (soundDev != -1)
-        {
-            vol = ((newvol << 8) | newvol);
-            ioctl(soundDev, SOUND_MIXER_WRITE_PCM, &vol);
-            close(soundDev);
-        }
-    }
-}
-
-// Returns 0-100, current mixer volume, -1 on error.
-static int Get_GP2X_Volume (void)
-{
-    int soundDev, vol;
-
-    vol = -1;
-    soundDev = open("/dev/mixer", O_RDONLY);
-    if (soundDev != -1)
-    {
-        ioctl(soundDev, SOUND_MIXER_READ_PCM, &vol);
-        close(soundDev);
-        if (vol != -1)
-        {
-            //just return one channel , not both channels, they're hopefully the same anyways
-            return (vol & 0xFF);
-        }
-    }
-
-    return vol;
-}
-
-static void Set_Initial_GP2X_Volume (void)
-{
-    Set_GP2X_Volume(InitialVolume);
-}
-
-void Change_HW_Audio_Volume (int amount)
-{
-    int current_volume;
-
-    current_volume = Get_GP2X_Volume();
-
-    if (current_volume == -1) current_volume = 68;
-
-    if ((amount > 1) && current_volume < 12)
-    {
-        amount = 1;
-    }
-    else if ((amount < -1) && current_volume <= 12)
-    {
-        amount = -1;
-    }
-
-    current_volume += amount;
-
-    if (current_volume > 100)
-    {
-        current_volume = 100;
-    }
-    else if (current_volume < 0)
-    {
-        current_volume = 0;
-    }
-    Set_GP2X_Volume(current_volume);
-}
-#endif
-
 int main(int argc, char *argv[])
 {
-#if defined(GP2X)
-    InitialVolume = Get_GP2X_Volume();
-    atexit(Set_Initial_GP2X_Volume);
-#endif
 //23 dec 09 : on initialise les joysticks
-    SDL_Init( SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_AUDIO );
+    if (SDL_Init( SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_AUDIO ) < 0) {
+        printf("%s\n", SDL_GetError());
+        exit(1);
+    }
+    atexit(SDL_Quit);
 
     srand(time(NULL));
     SDL_Surface *mario[16] = {NULL}, *fond = NULL, *coeurRouge = NULL;
@@ -258,7 +189,7 @@ int main(int argc, char *argv[])
     int fpstime = SDL_GetTicks() + 16;
     int fps = 1; //active/desactive la gestion de 60fps
 
-#if !defined(GP2X) && !defined(PANDORA)
+#if !defined(PANDORA) && !defined(PYRA)
     //Pour la gestion des touches
     int keytime = SDL_GetTicks();
 #endif
@@ -353,23 +284,27 @@ int main(int argc, char *argv[])
     InitSwitchs();
 
     /* Initialisation de FMOD */
-#if defined(GP2X)
-#define MIX_BUFFER_SIZE 512
-#else
-#define MIX_BUFFER_SIZE 4096
+    if (Mix_Init(MIX_INIT_MP3) < 0) {
+        printf("%s\n", Mix_GetError());
+        exit(1);
+    }
+    atexit(Mix_Quit);
+
+    int result;
+#if SDL_VERSIONNUM(SDL_MIXER_MAJOR_VERSION, SDL_MIXER_MINOR_VERSION, SDL_MIXER_PATCHLEVEL) >= SDL_VERSIONNUM(2,0,2)
+    const SDL_version *link_version = Mix_Linked_Version();
+    if (SDL_VERSIONNUM(link_version->major, link_version->minor, link_version->patch) >= SDL_VERSIONNUM(2,0,2)) {
+        result = Mix_OpenAudioDevice(44100, MIX_DEFAULT_FORMAT, 2, 4096, NULL, SDL_AUDIO_ALLOW_ANY_CHANGE);
+    }
+    else
 #endif
-    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, MIX_BUFFER_SIZE);
+    result = Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096);
+    if (result != 0) {
+        printf("%s\n", Mix_GetError());
+        exit(1);
+    }
     Mix_AllocateChannels(16);
-#if SDL_VERSIONNUM(SDL_MIXER_MAJOR_VERSION, SDL_MIXER_MINOR_VERSION, SDL_MIXER_PATCHLEVEL) >= SDL_VERSIONNUM(1, 2, 10)
-    #if defined(GP2X)
-        Mix_Init(MIX_INIT_OGG);
-    #else
-        Mix_Init(MIX_INIT_MP3);
-    #endif
-#endif
-#if defined(GP2X)
-    Set_Initial_GP2X_Volume();
-#endif
+    atexit(Mix_CloseAudio);
 
     //Pour le son
     //Epee quand on frappe
@@ -378,20 +313,20 @@ int main(int argc, char *argv[])
     int epee = 1, epee2 = 1;
 
     /* Chargement des sons */
-    sword        = Mix_LoadWAV("sons/sword.wav");
-    ah           = Mix_LoadWAV("sons/ah.wav");
-    hurt         = Mix_LoadWAV("sons/hurt.wav");
-    ehit         = Mix_LoadWAV("sons/ehit.wav");
-    ekill        = Mix_LoadWAV("sons/ekill.wav");
-    LowHealth    = Mix_LoadWAV("sons/LowHealth.wav");
-    item_sound   = Mix_LoadWAV("sons/item.wav");
-    fanfare      = Mix_LoadWAV("sons/fanfare.wav");
-    dragonstart  = Mix_LoadWAV("sons/dragonstart.wav");
-    dragonhit    = Mix_LoadWAV("sons/dragonhit.wav");
-    dragondies   = Mix_LoadWAV("sons/dragondies.wav");
-    rain         = Mix_LoadWAV("sons/rain2.wav");
-    potion_sound = Mix_LoadWAV("sons/potion.wav");
-    destroy      = Mix_LoadWAV("sons/destroy.wav");
+    sword        = Mix_LoadWAV_RW(SDL_RWFromFile("sons/sword.wav", "rb"), 1);
+    ah           = Mix_LoadWAV_RW(SDL_RWFromFile("sons/ah.wav", "rb"), 1);
+    hurt         = Mix_LoadWAV_RW(SDL_RWFromFile("sons/hurt.wav", "rb"), 1);
+    ehit         = Mix_LoadWAV_RW(SDL_RWFromFile("sons/ehit.wav", "rb"), 1);
+    ekill        = Mix_LoadWAV_RW(SDL_RWFromFile("sons/ekill.wav", "rb"), 1);
+    LowHealth    = Mix_LoadWAV_RW(SDL_RWFromFile("sons/LowHealth.wav", "rb"), 1);
+    item_sound   = Mix_LoadWAV_RW(SDL_RWFromFile("sons/item.wav", "rb"), 1);
+    fanfare      = Mix_LoadWAV_RW(SDL_RWFromFile("sons/fanfare.wav", "rb"), 1);
+    dragonstart  = Mix_LoadWAV_RW(SDL_RWFromFile("sons/dragonstart.wav", "rb"), 1);
+    dragonhit    = Mix_LoadWAV_RW(SDL_RWFromFile("sons/dragonhit.wav", "rb"), 1);
+    dragondies   = Mix_LoadWAV_RW(SDL_RWFromFile("sons/dragondies.wav", "rb"), 1);
+    rain         = Mix_LoadWAV_RW(SDL_RWFromFile("sons/rain2.wav", "rb"), 1);
+    potion_sound = Mix_LoadWAV_RW(SDL_RWFromFile("sons/potion.wav", "rb"), 1);
+    destroy      = Mix_LoadWAV_RW(SDL_RWFromFile("sons/destroy.wav", "rb"), 1);
 
      //Musiques
     loadSong(0);
@@ -400,25 +335,18 @@ int main(int argc, char *argv[])
     // Gestion du texte
 
 //    SDL_Color couleurBlanche = {255, 255, 255};
-    TTF_Init();
+    if (TTF_Init() < 0) {
+        printf("%s\n", TTF_GetError());
+        exit(1);
+    }
+    atexit(TTF_Quit);
     /* Chargement de la police */
-    police = TTF_OpenFont("police.ttf", TEXT_SIZE);
+    police = TTF_OpenFont("police.ttf", 14);
 
-
-    SDL_WM_SetIcon(IMG_Load("B20.bmp"), NULL); // L'icône doit être chargée avant SDL_SetVideoMode
 
     //23 dec 09 : Pour le joystick
      //Stocke le numéro du joystick
-#if defined(GP2X)
-    SDL_JoystickOpen(0);
-#if defined(SDL_GP2X__H)
-    if (SDL_GP2X_MouseType() == GP2X_MOUSE_TOUCHSCREEN)
-    {
-        SDL_GP2X_TouchpadMouseMotionEvents(0);
-        SDL_GP2X_TouchpadMouseButtonEvents(0);
-    }
-#endif
-#elif !defined(PANDORA)
+#if !defined(PANDORA) && !defined(PYRA)
     if ( SDL_NumJoysticks() > 0 )
     {
         SDL_JoystickEventState(SDL_ENABLE);
@@ -432,46 +360,32 @@ int main(int argc, char *argv[])
 #endif
 
 
-    //Gestion du profil et du plein ecran
-#if !defined(GP2X) && !defined(PANDORA)
+    // Gestion du mode video : plein ecran ou fenetre
+#if !defined(PANDORA) && !defined(PYRA)
     int video = 2;   //Mode video : 1 = plein ecran, 2 = fenetre
-    int profil = 1;  // Profil : 1 = normal, 2 = netbooks
-#endif
-    //int KR = 10;
-
-#if defined(GP2X)
-    #if defined(SDL_GP2X__H)
-    {
-        SDL_Rect size;
-
-        SDL_GP2X_GetPhysicalScreenSize(&size);
-
-        tvout = (size.w == 320)?0:1;
-    }
-    #endif
-
-    //KR = 10;
-    ecran = SDL_SetVideoMode(320, 240, 16, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN | SDL_NOFRAME );
-#elif defined(PANDORA)
-    //KR = 10;
-    ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN | SDL_NOFRAME );
-#else
-    if (profil == 1) {  //KR = 10;
-     if ( video == 1) {
-        ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN ); }
-     else if ( video == 2) {
-        ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_HWSURFACE | SDL_DOUBLEBUF ); }
-    }
-    else if (profil == 2) {  //KR = 1;
-     if ( video == 1) {
-        ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_SWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN ); }
-     else if ( video == 2) {
-        ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_SWSURFACE | SDL_DOUBLEBUF ); }
-    }
 #endif
 
-    SDL_WM_SetCaption("Roswyn and The Dragons by Jeremie F. BELLANGER", NULL);
+    window = SDL_CreateWindow("Roswyn and The Dragons by Jeremie F. BELLANGER", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, LARGEUR_FENETRE, HAUTEUR_FENETRE, SDL_WINDOW_HIDDEN | ((video == 1) ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0));
+    if (window == NULL) {
+        printf("%s\n", SDL_GetError());
+        exit(1);
+    }
+    window_surface = SDL_GetWindowSurface(window);
+    if (window_surface == NULL) {
+        printf("%s\n", SDL_GetError());
+        exit(1);
+    }
+    ecran = SDL_CreateRGBSurface(0, LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, 0, 0, 0, 0);
+    if (ecran == NULL) {
+        printf("%s\n", SDL_GetError());
+        exit(1);
+    }
 
+    SDL_SetWindowIcon(window, IMG_Load("B20.bmp"));
+
+    SDL_ShowWindow(window);
+
+    calc_flip_rect();
 
      //On charge mario, i.e. le joueur
         mario[BAS] = loadImage("sprites1/player_bas1.png");
@@ -635,9 +549,6 @@ int main(int argc, char *argv[])
         positionFond.y = TAILLE_BLOC * NB_BLOCS_HAUTEUR + 1;
 
 
-        //A placer avent la boucle principale pour permettre de maintenir une touche enfoncee
-        //SDL_EnableKeyRepeat(KR, KR); //(duree avant declenchement, delai en ms)
-
     int arrow_pressed = 0, space_pressed;
 
     //Boucle principale du programme pour deplacer Mario
@@ -753,7 +664,7 @@ int main(int argc, char *argv[])
 
                         //Attaque avec spacebar pendant la duree tempsAnim, on met animMario à 3
                         case SDLK_SPACE:
-#if defined(PANDORA)
+#if defined(PANDORA) || defined(PYRA)
                         case SDLK_HOME:
                         case SDLK_END:
                         case SDLK_PAGEDOWN:
@@ -778,42 +689,14 @@ int main(int argc, char *argv[])
                             continuer = 0;
                             break;
 
-#if !defined(GP2X) && !defined(PANDORA)
+#if !defined(PANDORA) && !defined(PYRA)
                         case SDLK_F1: // Gestion du mode video : plein ecran ou fenetre
                             if ( video == 1 ) video = 2 ;
                             else video = 1 ;
 
-                            if (profil == 1) {  //KR = 10;
-                                if ( video == 1) {
-                                ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN ); }
-                                else if ( video == 2) {
-                                ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_HWSURFACE | SDL_DOUBLEBUF ); }
-                            }
-                            else if (profil == 2) {  //KR = 1;
-                                if ( video == 1) {
-                                ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_SWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN ); }
-                                else if ( video == 2) {
-                                ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_SWSURFACE | SDL_DOUBLEBUF ); }
-                                }
-                            break;
-
-
-                        case SDLK_F2: // Gestion du mode video : plein ecran ou fenetre
-                            if ( profil == 1 ) profil = 2 ;
-                            else profil = 1 ;
-
-                            if (profil == 1) {  //KR = 10;
-                                if ( video == 1) {
-                                ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN ); }
-                                else if ( video == 2) {
-                                ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_HWSURFACE | SDL_DOUBLEBUF ); }
-                            }
-                            else if (profil == 2) {  //KR = 1;
-                                if ( video == 1) {
-                                ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_SWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN ); }
-                                else if ( video == 2) {
-                                ecran = SDL_SetVideoMode(LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, SDL_SWSURFACE | SDL_DOUBLEBUF ); }
-                                }
+                            SDL_SetWindowFullscreen(window, (video == 1) ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+                            window_surface = SDL_GetWindowSurface(window);
+                            calc_flip_rect();
                             break;
 #endif
 
@@ -844,7 +727,7 @@ int main(int argc, char *argv[])
                                 break;
 
                             case SDLK_SPACE:
-#if defined(PANDORA)
+#if defined(PANDORA) || defined(PYRA)
                             case SDLK_HOME:
                             case SDLK_END:
                             case SDLK_PAGEDOWN:
@@ -853,7 +736,7 @@ int main(int argc, char *argv[])
                                 keys_pressed[0] = 0;
                                 break;
 
-#if !defined(GP2X) && !defined(PANDORA)
+#if !defined(PANDORA) && !defined(PYRA)
                             case SDLK_F3: // Gestion du mode 60fps - à desactiver sur les petites configs
 
                             if (keytime + 500 < SDL_GetTicks())
@@ -879,132 +762,7 @@ int main(int argc, char *argv[])
                         }
                         break;
 
-#if defined(GP2X)
-                    case SDL_JOYBUTTONDOWN:
-
-                        switch(event.jbutton.button)
-                        {
-                        case GP2X_BUTTON_UP : // Flèche haut anim complete : on teste les 2 tiles contre lesquels se trouve le perso et on met a jour l'animation selon la valeur d' animMario
-                            arrow_pressed = 1;
-                            keys_pressed[8] = 1;
-                            break;
-
-                        case GP2X_BUTTON_UPRIGHT :
-                            keys_pressed[9] = 1;
-                            break;
-
-                        case GP2X_BUTTON_UPLEFT :
-                            keys_pressed[7] = 1;
-                            break;
-
-                        case GP2X_BUTTON_DOWN: // Flèche bas anim idem
-                            arrow_pressed = 2;
-                            keys_pressed[2] = 1;
-                            break;
-
-                        case GP2X_BUTTON_DOWNRIGHT :
-                            keys_pressed[3] = 1;
-                            break;
-
-                        case GP2X_BUTTON_DOWNLEFT :
-                            keys_pressed[1] = 1;
-                            break;
-
-                        case GP2X_BUTTON_RIGHT: // Flèche droite anim idem
-                            arrow_pressed = 3;
-                            keys_pressed[6] = 1;
-                            break;
-
-                        case GP2X_BUTTON_LEFT: // Flèche gauche anim idem
-                            arrow_pressed = 4;
-                            keys_pressed[4] = 1;
-                            break;
-
-                        case GP2X_BUTTON_A:
-                        case GP2X_BUTTON_B:
-                        case GP2X_BUTTON_X:
-                        case GP2X_BUTTON_Y:
-                            keys_pressed[0] = 1;
-                            break;
-
-                        case GP2X_BUTTON_START:
-                            if (input.timer + 500 < SDL_GetTicks())
-                            {
-
-                            input.timer = SDL_GetTicks();
-                            input.pause = 1;
-
-                            }
-
-                            break;
-
-                        case GP2X_BUTTON_SELECT: /* Si c'est un évènement de type "Quitter" */
-                            continuer = 0;
-                            break;
-
-                        case GP2X_BUTTON_VOLUP:
-                            Change_HW_Audio_Volume(4);
-                            break;
-
-                        case GP2X_BUTTON_VOLDOWN:
-                            Change_HW_Audio_Volume(-4);
-                            break;
-
-                        default:
-                            break;
-                        }
-                        break;
-
-                    case SDL_JOYBUTTONUP:
-
-                        switch(event.jbutton.button)
-                        {
-                        case GP2X_BUTTON_UP :
-                            keys_pressed[8] = 0;
-                            break;
-
-                        case GP2X_BUTTON_UPRIGHT :
-                            keys_pressed[9] = 0;
-                            break;
-
-                        case GP2X_BUTTON_UPLEFT :
-                            keys_pressed[7] = 0;
-                            break;
-
-                        case GP2X_BUTTON_DOWN:
-                            keys_pressed[2] = 0;
-                            break;
-
-                        case GP2X_BUTTON_DOWNRIGHT :
-                            keys_pressed[3] = 0;
-                            break;
-
-                        case GP2X_BUTTON_DOWNLEFT :
-                            keys_pressed[1] = 0;
-                            break;
-
-                        case GP2X_BUTTON_RIGHT:
-                            keys_pressed[6] = 0;
-                            break;
-
-                        case GP2X_BUTTON_LEFT:
-                            keys_pressed[4] = 0;
-                            break;
-
-                        case GP2X_BUTTON_A:
-                        case GP2X_BUTTON_B:
-                        case GP2X_BUTTON_X:
-                        case GP2X_BUTTON_Y:
-                            keys_pressed[0] = 0;
-                            break;
-
-                        default:
-                            break;
-                        }
-                        break;
-#endif
-
-#if !defined(GP2X) && !defined(PANDORA)
+#if !defined(PANDORA) && !defined(PYRA)
                 //23dec09 : gestion du joystick (en parallèle du clavier)
                 if ( joystick != NULL )
                     { case SDL_JOYBUTTONDOWN:
@@ -1171,10 +929,10 @@ int main(int argc, char *argv[])
                         //Gestion des tiles HIT
                         if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
                             { if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
                             { if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         //Gestion des cases speciales (coffres...)
                         if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  break;
                         if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  break;
@@ -1196,11 +954,11 @@ int main(int argc, char *argv[])
                         if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
                             {   if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2];
                                 if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 51)
                             {   if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2];
                                 if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                     //Gestion des cases speciales (coffres...)
                         if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] >= 46) { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
                         if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] >= 46)  { if (animMario == 1) marioActuel = mario[HAUT]; else marioActuel = mario[HAUT2]; break; }
@@ -1223,10 +981,10 @@ int main(int argc, char *argv[])
                         //Gestion des tiles HIT
                         if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
                             { if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
                             { if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         //Gestion des cases speciales (coffres...)
                         if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  break;
                         if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  break;
@@ -1248,11 +1006,11 @@ int main(int argc, char *argv[])
                         if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
                             {   if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2];
                                 if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 51)
                             {   if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2];
                                 if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                     //Gestion des cases speciales (coffres...)
                         if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
                         if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[BAS]; } else marioActuel = mario[BAS2]; break; }
@@ -1275,10 +1033,10 @@ int main(int argc, char *argv[])
                         //Gestion des tiles HIT
                         if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 51)
                             { if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 51)
                             { if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         //Gestion des cases speciales (coffres...)
                             if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 46)  break;
                             if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 46)  break;
@@ -1300,11 +1058,11 @@ int main(int argc, char *argv[])
                         if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 51)
                             {   if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2];
                                 if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 51)
                             {   if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2];
                                 if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                     //Gestion des cases speciales (coffres...)
                             if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] >= 46)  { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
                             if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[DROITE]; } else marioActuel = mario[DROITE2]; break; }
@@ -1327,10 +1085,10 @@ int main(int argc, char *argv[])
                         //Gestion des tiles HIT
                         if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 51)
                             { if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 51)
                             { if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         //Gestion des cases speciales (coffres...)
                             if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 46)  break;
                             if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 46)  break;
@@ -1351,11 +1109,11 @@ int main(int argc, char *argv[])
                         if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 51)
                             {   if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2];
                                 if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                         if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 51)
                             {   if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2];
                                 if (invincibilite == 0) {
-                            coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
+                            coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); } break; }
                     //Gestion des cases speciales (coffres...)
                             if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] >= 46)  { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
                             if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] >= 46)  { if (animMario == 1) { marioActuel = mario[GAUCHE]; } else marioActuel = mario[GAUCHE2]; break; }
@@ -1381,27 +1139,27 @@ int main(int argc, char *argv[])
                             if ( power > 2 ) {
                                 if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
                                     { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                       if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                     }
                                 if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
                                     { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                       if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 49)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                     }
                                 if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
                                     { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 49)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                       if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 49)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                     }
                                 if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
                                     { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 49)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                       if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 49)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                     }
                             } //Fin
 
@@ -1409,27 +1167,27 @@ int main(int argc, char *argv[])
                             if ( power > 1 ) {
                                 if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
                                     { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                       if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                     }
                                 if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
                                     { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                       if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 50)
-                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                     }
                                 if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
                                     { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 50)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                       if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 50)
-                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                     }
                                 if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
                                     { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 50)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                       if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 50)
-                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannel(-1, destroy, 0); }
+                                        { carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] = 21; Mix_PlayChannelTimed(-1, destroy, 0, -1); }
                                     }
                             } //Fin
 
@@ -1437,27 +1195,27 @@ int main(int argc, char *argv[])
 
                                 if (marioActuel == mario[EPEEBAS] || marioActuel == mario[EPEEBAS2])
                                     { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannelTimed(-1, fanfare, 0, -1); } }
                                       if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y + 2) / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannelTimed(-1, fanfare, 0, -1); } }
                                     }
                                 if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
                                     { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannelTimed(-1, fanfare, 0, -1); } }
                                       if (carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannelTimed(-1, fanfare, 0, -1); } }
                                     }
                                 if (marioActuel == mario[EPEEDROITE] || marioActuel == mario[EPEEDROITE2])
                                     { if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannelTimed(-1, fanfare, 0, -1); } }
                                       if (carte[(positionMario.x +2) / TAILLE_BLOC + 1] [positionMario.y / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannelTimed(-1, fanfare, 0, -1); } }
                                     }
                                 if (marioActuel == mario[EPEEGAUCHE] || marioActuel == mario[EPEEGAUCHE2])
                                     { if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannelTimed(-1, fanfare, 0, -1); } }
                                       if (carte[(positionMario.x -2) / TAILLE_BLOC] [positionMario.y / TAILLE_BLOC + 1] == 46)
-                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannel(-1, fanfare, 0); } }
+                                        { if ( ValeurCoffre(level) == 1) { OuvreCoffre(level); open = 1; Mix_PlayChannelTimed(-1, fanfare, 0, -1); } }
                                     }
 
                                 //Ouverture du coffre
@@ -1513,7 +1271,7 @@ int main(int argc, char *argv[])
                                 if (marioActuel == mario[EPEEHAUT] || marioActuel == mario[EPEEHAUT2])
                                     { if (carte[positionMario.x / TAILLE_BLOC] [(positionMario.y - 6) / TAILLE_BLOC] == 48 || carte[positionMario.x / TAILLE_BLOC + 1] [(positionMario.y - 6) / TAILLE_BLOC] == 48  )
                                          { if ( ValeurSwitch(lswitch) == 1) { if (key > 0) { OuvreSwitch();
-                                        Mix_PlayChannel(-1, fanfare, 0); if ( ValeurSwitch(lswitch) == 0) key--; break; }  } }
+                                        Mix_PlayChannelTimed(-1, fanfare, 0, -1); if ( ValeurSwitch(lswitch) == 0) key--; break; }  } }
                                     }
 
                             //Test baton de feu
@@ -1568,7 +1326,7 @@ int main(int argc, char *argv[])
     //Gestion du son :
     if ( animMario == 3 ) { if (epee2 == 0) { epee = 0; epee2 = 1; } }
     else epee2 = 0;
-    if (epee == 0) { epee = 1;  Mix_PlayChannel(-1, ah, 0); Mix_PlayChannel(-1, sword, 0);  }
+    if (epee == 0) { epee = 1;  Mix_PlayChannelTimed(-1, ah, 0, -1); Mix_PlayChannelTimed(-1, sword, 0, -1);  }
 
 
     //******Deplacement et gestion de ennemi1 s'il est vivant**********
@@ -1625,8 +1383,8 @@ int main(int argc, char *argv[])
              if (abs(x) < 30 && abs(y) < 25) {
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (ennemi1freeze2 == 0) { ennemi1freeze = ennemi1freeze2 = 1;
-                    ennemi1life -= 1; if (ennemi1life <= 0) Mix_PlayChannel(-1, ekill, 0); else Mix_PlayChannel(-1, ehit, 0); tempsennemi1 = SDL_GetTicks(); } }
-                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    ennemi1life -= 1; if (ennemi1life <= 0) Mix_PlayChannelTimed(-1, ekill, 0, -1); else Mix_PlayChannelTimed(-1, ehit, 0, -1); tempsennemi1 = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } }
 
 
@@ -1812,8 +1570,8 @@ int main(int argc, char *argv[])
              if (abs(x) < 30 && abs(y) < 25) {
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (ennemi2freeze2 == 0) { ennemi2freeze = ennemi2freeze2 = 1; ennemi2life -= 1;
-                    if (ennemi2life <= 0) Mix_PlayChannel(-1, ekill, 0); else Mix_PlayChannel(-1, ehit, 0);tempsennemi2 = SDL_GetTicks(); } }
-                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    if (ennemi2life <= 0) Mix_PlayChannelTimed(-1, ekill, 0, -1); else Mix_PlayChannelTimed(-1, ehit, 0, -1);tempsennemi2 = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } }
 
 
@@ -1999,8 +1757,8 @@ int main(int argc, char *argv[])
              if (abs(x) < 30 && abs(y) < 25) {
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (ennemi3freeze2 == 0) { ennemi3freeze = ennemi3freeze2 = 1; ennemi3life -= 1;
-                    if (ennemi3life <= 0) Mix_PlayChannel(-1, ekill, 0); else Mix_PlayChannel(-1, ehit, 0);tempsennemi3 = SDL_GetTicks(); } }
-                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    if (ennemi3life <= 0) Mix_PlayChannelTimed(-1, ekill, 0, -1); else Mix_PlayChannelTimed(-1, ehit, 0, -1);tempsennemi3 = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } }
 
 
@@ -2187,8 +1945,8 @@ int main(int argc, char *argv[])
              if (abs(x) < 30 && abs(y) < 25) {
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (ennemi4freeze2 == 0) { ennemi4freeze = ennemi4freeze2 = 1; ennemi4life -= 1;
-                    if (ennemi4life <= 0) Mix_PlayChannel(-1, ekill, 0); else Mix_PlayChannel(-1, ehit, 0); tempsennemi4 = SDL_GetTicks(); } }
-                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    if (ennemi4life <= 0) Mix_PlayChannelTimed(-1, ekill, 0, -1); else Mix_PlayChannelTimed(-1, ehit, 0, -1); tempsennemi4 = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } }
 
 
@@ -2374,8 +2132,8 @@ int main(int argc, char *argv[])
              if (abs(x) < 30 && abs(y) < 25) {
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (ennemi5freeze2 == 0) { ennemi5freeze = ennemi5freeze2 = 1; ennemi5life -= 1;
-                    if (ennemi5life <= 0) Mix_PlayChannel(-1, ekill, 0); else Mix_PlayChannel(-1, ehit, 0); tempsennemi5 = SDL_GetTicks(); } }
-                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    if (ennemi5life <= 0) Mix_PlayChannelTimed(-1, ekill, 0, -1); else Mix_PlayChannelTimed(-1, ehit, 0, -1); tempsennemi5 = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } }
 
 
@@ -2509,7 +2267,7 @@ int main(int argc, char *argv[])
 
             if ( bossArrive == 1 ) {
 
-                Mix_PlayChannel(-1, dragonstart, 0);
+                Mix_PlayChannelTimed(-1, dragonstart, 0, -1);
 
 
                 //si c'est la premiere fois qu'on voit le boss
@@ -2592,16 +2350,16 @@ int main(int argc, char *argv[])
                  collision = 1;
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (bossfreeze2 == 0) { bossfreeze2 = 1;
-                    bosslife -= 1; if (bosslife <= 0) Mix_PlayChannel(-1, dragondies, 0); else Mix_PlayChannel(-1, dragonhit, 0); tempsboss = SDL_GetTicks(); } }
-                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    bosslife -= 1; if (bosslife <= 0) Mix_PlayChannelTimed(-1, dragondies, 0, -1); else Mix_PlayChannelTimed(-1, dragonhit, 0, -1); tempsboss = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } } }
         else {
              if (abs(x) < 29 && abs(y) < 75) {
                  collision = 1;
                 if (invincibilite == 0) {
                     if (animMario == 3) { if (bossfreeze2 == 0) { bossfreeze2 = 1;
-                    bosslife -= 1; if (bosslife <= 0) Mix_PlayChannel(-1, dragondies, 0); else Mix_PlayChannel(-1, dragonhit, 0); tempsboss = SDL_GetTicks(); } }
-                    else { coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
+                    bosslife -= 1; if (bosslife <= 0) Mix_PlayChannelTimed(-1, dragondies, 0, -1); else Mix_PlayChannelTimed(-1, dragonhit, 0, -1); tempsboss = SDL_GetTicks(); } }
+                    else { coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks(); }
                 } } }
 
 
@@ -2676,7 +2434,7 @@ int main(int argc, char *argv[])
 
 
                 // Son a mettre avec objet laisse
-                Mix_PlayChannel(-1, fanfare, 0);
+                Mix_PlayChannelTimed(-1, fanfare, 0, -1);
 
                  }   //on augmente le compteur comptant les boss vaincus
 
@@ -2732,7 +2490,7 @@ int main(int argc, char *argv[])
 
              if (abs(x) < 20 && abs(y) < 20) {
                  if (invincibilite == 0) {
-                    coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks();
+                    coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks();
                 } }
         }
 
@@ -2757,7 +2515,7 @@ int main(int argc, char *argv[])
 
              if (abs(x) < 20 && abs(y) < 20) {
                  if (invincibilite == 0) {
-                    coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks();
+                    coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks();
                 } }
         }
 
@@ -2782,7 +2540,7 @@ int main(int argc, char *argv[])
 
              if (abs(x) < 20 && abs(y) < 20) {
                  if (invincibilite == 0) {
-                    coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks();
+                    coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks();
                 } }
         }
 
@@ -2808,7 +2566,7 @@ int main(int argc, char *argv[])
 
              if (abs(x) < 20 && abs(y) < 20) {
                  if (invincibilite == 0) {
-                    coeur -= 1; Mix_PlayChannel(-1, hurt, 0); invincibilite = 1; tempsCoeur = SDL_GetTicks();
+                    coeur -= 1; Mix_PlayChannelTimed(-1, hurt, 0, -1); invincibilite = 1; tempsCoeur = SDL_GetTicks();
                 } }
         }
 
@@ -2883,8 +2641,8 @@ int main(int argc, char *argv[])
                  if (ennemi1freeze2 == 0)
                  {
                      ennemi1freeze = ennemi1freeze2 = 1; ennemi1life -= 1;
-                     if (ennemi1life <= 0) Mix_PlayChannel(-1, ekill, 0);
-                     else Mix_PlayChannel(-1, ehit, 0);
+                     if (ennemi1life <= 0) Mix_PlayChannelTimed(-1, ekill, 0, -1);
+                     else Mix_PlayChannelTimed(-1, ehit, 0, -1);
                      tempsennemi1 = SDL_GetTicks();
                  }
             }
@@ -2909,8 +2667,8 @@ int main(int argc, char *argv[])
                  if (ennemi2freeze2 == 0)
                  {
                      ennemi2freeze = ennemi2freeze2 = 1; ennemi2life -= 1;
-                     if (ennemi2life <= 0) Mix_PlayChannel(-1, ekill, 0);
-                     else Mix_PlayChannel(-1, ehit, 0);
+                     if (ennemi2life <= 0) Mix_PlayChannelTimed(-1, ekill, 0, -1);
+                     else Mix_PlayChannelTimed(-1, ehit, 0, -1);
                      tempsennemi2 = SDL_GetTicks();
                  }
             }
@@ -2935,8 +2693,8 @@ int main(int argc, char *argv[])
                  if (ennemi3freeze2 == 0)
                  {
                      ennemi3freeze = ennemi3freeze2 = 1; ennemi3life -= 1;
-                     if (ennemi3life <= 0) Mix_PlayChannel(-1, ekill, 0);
-                     else Mix_PlayChannel(-1, ehit, 0);
+                     if (ennemi3life <= 0) Mix_PlayChannelTimed(-1, ekill, 0, -1);
+                     else Mix_PlayChannelTimed(-1, ehit, 0, -1);
                      tempsennemi3 = SDL_GetTicks();
                  }
             }
@@ -2960,8 +2718,8 @@ int main(int argc, char *argv[])
                  if (ennemi4freeze2 == 0)
                  {
                      ennemi4freeze = ennemi4freeze2 = 1; ennemi4life -= 1;
-                     if (ennemi4life <= 0) Mix_PlayChannel(-1, ekill, 0);
-                     else Mix_PlayChannel(-1, ehit, 0);
+                     if (ennemi4life <= 0) Mix_PlayChannelTimed(-1, ekill, 0, -1);
+                     else Mix_PlayChannelTimed(-1, ehit, 0, -1);
                      tempsennemi4 = SDL_GetTicks();
                  }
             }
@@ -2985,8 +2743,8 @@ int main(int argc, char *argv[])
                  if (ennemi5freeze2 == 0)
                  {
                      ennemi5freeze = ennemi5freeze2 = 1; ennemi5life -= 1;
-                     if (ennemi5life <= 0) Mix_PlayChannel(-1, ekill, 0);
-                     else Mix_PlayChannel(-1, ehit, 0);
+                     if (ennemi5life <= 0) Mix_PlayChannelTimed(-1, ekill, 0, -1);
+                     else Mix_PlayChannelTimed(-1, ehit, 0, -1);
                      tempsennemi5 = SDL_GetTicks();
                  }
             }
@@ -3055,7 +2813,7 @@ int main(int argc, char *argv[])
 
             //1. S'il y a collision, on joue un son :
              if (abs(x) < 20 && abs(y) < 20) {
-                Mix_PlayChannel(-1, ehit, 0);
+                Mix_PlayChannelTimed(-1, ehit, 0, -1);
                 if (space_pressed)
                 {
                     if ( pnj1action == 0)
@@ -3122,7 +2880,7 @@ int main(int argc, char *argv[])
 
             //1. S'il y a collision, on joue un son :
              if (abs(x) < 20 && abs(y) < 20) {
-                Mix_PlayChannel(-1, ehit, 0);
+                Mix_PlayChannelTimed(-1, ehit, 0, -1);
 
                 if (space_pressed)
                 {
@@ -3191,7 +2949,7 @@ int main(int argc, char *argv[])
             //S'il y a collision et si l'item existe :
              if (abs(x) < 30 && abs(y) < 30) {
                 if ( item1.itemExiste == 1)
-                { item1.itemExiste = 0; Mix_PlayChannel(-1, item_sound, 0);
+                { item1.itemExiste = 0; Mix_PlayChannelTimed(-1, item_sound, 0, -1);
                 if ( item1.itemType == 1 ) { coeur++;  if ( coeur > coeurmax) coeur = coeurmax; }
                 if ( item1.itemType == 2 ) { money += (rand() % (20 - 1 + 1)) + 1;   }
                 if ( item1.itemType == 3 ) { potion++;   }
@@ -3245,7 +3003,7 @@ int main(int argc, char *argv[])
     //Gestion de la santé
     if (coeur == 1) {
     if (tempsSante + 500 < SDL_GetTicks()) {
-        tempsSante = SDL_GetTicks(); Mix_PlayChannel(-1, LowHealth, 0);
+        tempsSante = SDL_GetTicks(); Mix_PlayChannelTimed(-1, LowHealth, 0, -1);
     }  }
     if (coeur < 0) coeur = 0;
 
@@ -3253,7 +3011,7 @@ int main(int argc, char *argv[])
     if ( coeur <= 0 ) {
         if ( potion >= 1)
         { potion--; coeur = coeurmax;
-        Mix_PlayChannel(-1, potion_sound, 0); }
+        Mix_PlayChannelTimed(-1, potion_sound, 0, -1); }
 
         else {
                 loadSong(0);
@@ -3381,15 +3139,12 @@ int main(int argc, char *argv[])
 
     //Pluie
     if ( weather >= 1 ) { BlitSprite(tempsActuel, ecran, &positionPluie);
-        if ( tempsMusiquePluie + 6000 < SDL_GetTicks() ) { Mix_PlayChannel(-1, rain, 0); tempsMusiquePluie = SDL_GetTicks(); } }
+        if ( tempsMusiquePluie + 6000 < SDL_GetTicks() ) { Mix_PlayChannelTimed(-1, rain, 0, -1); tempsMusiquePluie = SDL_GetTicks(); } }
 
     FlipScreen(); /* On met à jour l'affichage */
 
 
     //Pour avoir 60 fps : il faut un tour de boucle tous les 16ms (16.6 exactement)
-#if defined(GP2X)
-if (!tvout) { /* do nothing */ } else
-#endif
 if ( fps )
 {
     delai = SDL_GetTicks();
@@ -3480,19 +3235,10 @@ else SDL_Delay(1);
 
     freeMusic();
 
-#if SDL_VERSIONNUM(SDL_MIXER_MAJOR_VERSION, SDL_MIXER_MINOR_VERSION, SDL_MIXER_PATCHLEVEL) >= SDL_VERSIONNUM(1, 2, 10)
-    while (Mix_Init(0)) Mix_Quit();
-#endif
-
-    Mix_CloseAudio();
-
     TTF_CloseFont(police);
-    TTF_Quit();
 
     //23 dec 09 : On quitte la gestion des joysticks ;)
     SDL_JoystickClose(joystick);
-
-    SDL_Quit();
 
 
 
