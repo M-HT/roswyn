@@ -76,9 +76,9 @@
     SDL_Joystick *joystick = NULL;
     TTF_Font *police = NULL;
     SDL_Window *window = NULL;
-    SDL_Surface *window_surface = NULL;
+    SDL_Renderer *renderer = NULL;
     SDL_Surface *ecran = NULL;
-    SDL_Rect flip_rect;
+    SDL_Texture *screen_texture = NULL;
 
     Mix_Music *musiqueJouee = NULL;
 
@@ -129,28 +129,6 @@ static void DrawScreen1(void)
     if ( weather >= 1 ) BlitSprite(tempsActuel, ecran, &positionPluie);
     BlitSprite(marioActuel, ecran, &positionMario); /* On place mario à sa nouvelle position */
     FlipScreen(); /* On met à jour l'affichage */
-}
-
-static void calc_flip_rect(void)
-{
-    if (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN_DESKTOP) {
-        if (((float)window_surface->w) / ecran->w <= ((float)window_surface->h) / ecran->h) {
-            flip_rect.x = 0;
-            flip_rect.w = window_surface->w;
-            flip_rect.h = (window_surface->w * ecran->h) / ecran->w;
-            flip_rect.y = (window_surface->h - flip_rect.h) / 2;
-        } else {
-            flip_rect.y = 0;
-            flip_rect.h = window_surface->h;
-            flip_rect.w = (window_surface->h * ecran->w) / ecran->h;
-            flip_rect.x = (window_surface->w - flip_rect.w) / 2;
-        }
-    } else {
-        flip_rect.x = 0;
-        flip_rect.y = 0;
-        flip_rect.w = window_surface->w;
-        flip_rect.h = window_surface->h;
-    }
 }
 
 void ClearKeys(void)
@@ -365,27 +343,34 @@ int main(int argc, char *argv[])
     int video = 2;   //Mode video : 1 = plein ecran, 2 = fenetre
 #endif
 
-    window = SDL_CreateWindow("Roswyn and The Dragons by Jeremie F. BELLANGER", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, LARGEUR_FENETRE, HAUTEUR_FENETRE, SDL_WINDOW_HIDDEN | ((video == 1) ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0));
+#if !defined(PANDORA) && !defined(PYRA)
+    #define WINDOW_FLAGS ((video == 1) ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
+#else
+    #define WINDOW_FLAGS SDL_WINDOW_FULLSCREEN_DESKTOP
+#endif
+
+    window = SDL_CreateWindow("Roswyn and The Dragons by Jeremie F. BELLANGER", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, LARGEUR_FENETRE, HAUTEUR_FENETRE, SDL_WINDOW_HIDDEN | WINDOW_FLAGS);
     if (window == NULL) {
         printf("%s\n", SDL_GetError());
         exit(1);
     }
-    window_surface = SDL_GetWindowSurface(window);
-    if (window_surface == NULL) {
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+    if (renderer == NULL) {
         printf("%s\n", SDL_GetError());
         exit(1);
     }
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+    SDL_RenderSetLogicalSize(renderer, LARGEUR_FENETRE, HAUTEUR_FENETRE);
     ecran = SDL_CreateRGBSurface(0, LARGEUR_FENETRE, HAUTEUR_FENETRE, 32, 0, 0, 0, 0);
     if (ecran == NULL) {
         printf("%s\n", SDL_GetError());
         exit(1);
     }
+    screen_texture = SDL_CreateTexture(renderer, ecran->format->format, SDL_TEXTUREACCESS_STREAMING, ecran->w, ecran->h);
 
     SDL_SetWindowIcon(window, IMG_Load("B20.bmp"));
 
     SDL_ShowWindow(window);
-
-    calc_flip_rect();
 
      //On charge mario, i.e. le joueur
         mario[BAS] = loadImage("sprites1/player_bas1.png");
@@ -695,8 +680,6 @@ int main(int argc, char *argv[])
                             else video = 1 ;
 
                             SDL_SetWindowFullscreen(window, (video == 1) ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
-                            window_surface = SDL_GetWindowSurface(window);
-                            calc_flip_rect();
                             break;
 #endif
 
@@ -744,11 +727,13 @@ int main(int argc, char *argv[])
                                 if ( fps == 1 )
                                     {
                                         fps = 0;
+                                        SDL_GL_SetSwapInterval(0); // Works only with OpenGL backend
                                         AfficheDialogues (ecran, police, 985);
                                     }
                                 else
                                     {
                                         fps = 1;
+                                        SDL_GL_SetSwapInterval(1); // Works only with OpenGL backend
                                         AfficheDialogues (ecran, police, 984);
                                     }
                                 keytime = SDL_GetTicks();

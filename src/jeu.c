@@ -74,9 +74,9 @@
     extern SDL_Joystick *joystick;
     extern TTF_Font *police;
     extern SDL_Window *window;
-    extern SDL_Surface *window_surface;
+    extern SDL_Renderer *renderer;
     extern SDL_Surface *ecran;
-    extern SDL_Rect flip_rect;
+    extern SDL_Texture *screen_texture;
 
     extern Mix_Music *musiqueJouee;
 
@@ -94,8 +94,10 @@
 
 void FlipScreen(void)
 {
-    SDL_BlitScaled(ecran, NULL, window_surface, &flip_rect);
-    SDL_UpdateWindowSurface(window);
+    SDL_UpdateTexture(screen_texture, NULL, ecran->pixels, ecran->pitch);
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, screen_texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
 }
 
 void ClearScreen(void)
